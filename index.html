@@ -749,7 +749,6 @@ button, [onclick]:not(input):not(textarea):not(select){
     <button class="tab-item" onclick="switchTab('progress')" id="tab-progress">
       <div class="tab-icon-wrap"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
       <span>Progreso</span><div class="tab-dot"></div>
-      <div id="progress-notif" style="display:none;position:absolute;top:6px;right:50%;transform:translateX(14px);width:8px;height:8px;border-radius:50%;background:#16a34a;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.04)"></div>
     </button>
   </div>
 </div><!-- fin .app -->
@@ -774,6 +773,26 @@ button, [onclick]:not(input):not(textarea):not(select){
   <div class="es-footer">
     <button class="es-save" onclick="saveEditSemana()">Guardar Cambios</button>
     <div class="es-cancel" onclick="closeEditarSemana()">Cancelar</div>
+  </div>
+</div>
+
+<!-- EDITAR SEMANA DE DIETA (reorganizar días de la dieta fija, drag & drop) -->
+<div class="es-overlay" id="editsemanadieta-overlay">
+  <div class="es-header">
+    <div class="es-back" onclick="closeEditarSemanaDieta()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#006b2c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="es-htitle">Editar Semana</div>
+    <div class="es-avatar" id="esd-avatar" onclick="openPerfilPanel()">H</div>
+  </div>
+  <div class="es-body" id="esd-body">
+    <div class="es-h1">Reorganizar Plan Semanal</div>
+    <div class="es-sub">Arrastra y suelta para cambiar qué menú de la dieta ves cada día.</div>
+    <div class="es-list" id="esd-list"></div>
+  </div>
+  <div class="es-footer">
+    <button class="es-save" onclick="saveEditSemanaDieta()">Guardar Cambios</button>
+    <div class="es-cancel" onclick="closeEditarSemanaDieta()">Cancelar</div>
   </div>
 </div>
 
@@ -941,6 +960,177 @@ let SESSIONS=['LEG','PULL','PUSH','TORSO']; // fallback inicial hasta cargar pla
 let MESO2={};
 const DAY_KEYS=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
+// ── DIETA FIJA (plan del entrenador, transcrito a mano) ──
+// Tokens de día usados por FIXED_DIET_PLAN y por la reorganización semanal de
+// la dieta (diet_week_reorders). Kcal/macros por alimento son una estimación
+// estándar (no hay macro exacto del entrenador) usando gramos indicados en su
+// tabla; sirven para el anillo de macros y la lista de la compra.
+const DIET_DAY_TOKENS=['mon','tue','wed','thu','fri','sat','sun'];
+const DIET_DAY_LABEL={mon:'Lunes',tue:'Martes',wed:'Miércoles',thu:'Jueves',fri:'Viernes',sat:'Sábado',sun:'Domingo'};
+const FIXED_DIET_PLAN={
+  mon:{meals:{
+    Desayuno:{items:[
+      {name:'Pan',grams:100,kcal:265,p:9,ch:49,g:3.2},
+      {name:'Huevo',grams:150,kcal:234,p:19,ch:2,g:16},
+      {name:'Clara de huevo',grams:100,kcal:52,p:11,ch:1,g:0}
+    ]},
+    Comida:{items:[
+      {name:'Pavo o Pollo',grams:250,kcal:300,p:55,ch:0,g:8},
+      {name:'Pasta',grams:40,kcal:141,p:5,ch:28,g:1},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Merienda:{items:[
+      {name:'Caseína',grams:25,kcal:90,p:20,ch:2,g:1},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Cena:{items:[
+      {name:'Contramuslo de Pollo',grams:200,kcal:260,p:34,ch:0,g:13},
+      {name:'Boniato',grams:200,kcal:172,p:3,ch:40,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0}
+    ]}
+  }},
+  tue:{meals:{
+    Desayuno:{items:[
+      {name:'Pan',grams:80,kcal:212,p:7,ch:39,g:3},
+      {name:'Jamón',grams:70,kcal:102,p:15,ch:1,g:4}
+    ]},
+    Comida:{items:[
+      {name:'Pavo o Pollo',grams:150,kcal:180,p:33,ch:0,g:5},
+      {name:'Arroz',grams:40,kcal:144,p:3,ch:32,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Merienda:{items:[
+      {name:'Caseína',grams:30,kcal:108,p:24,ch:2,g:1},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Cena:{items:[
+      {name:'Ternera',grams:150,kcal:210,p:32,ch:0,g:9},
+      {name:'Boniato',grams:200,kcal:172,p:3,ch:40,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0}
+    ]}
+  }},
+  wed:{meals:{
+    Desayuno:{items:[
+      {name:'Pan (tostadas)',grams:70,kcal:186,p:6,ch:34,g:2},
+      {name:'Cecina',grams:70,kcal:112,p:22,ch:1,g:2},
+      {name:'Aceite',grams:5,kcal:44,p:0,ch:0,g:5}
+    ]},
+    Comida:{items:[
+      {name:'Pasta',grams:80,kcal:282,p:10,ch:57,g:1},
+      {name:'Contramuslo de Pollo o Pavo',grams:250,kcal:325,p:43,ch:0,g:16},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Merienda:{items:[
+      {name:'Pan (tostadas)',grams:40,kcal:106,p:4,ch:20,g:1},
+      {name:'Pavo embutido',grams:100,kcal:100,p:18,ch:2,g:2},
+      {name:'Aceite',grams:10,kcal:88,p:0,ch:0,g:10}
+    ]},
+    Cena:{items:[
+      {name:'Lomo embuchado',grams:80,kcal:192,p:24,ch:1,g:10},
+      {name:'Tortitas',grams:45,kcal:174,p:4,ch:36,g:1},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0}
+    ]}
+  }},
+  thu:{meals:{
+    Desayuno:{items:[
+      {name:'Pan de barra',grams:80,kcal:212,p:7,ch:39,g:3},
+      {name:'Lomo embuchado',grams:90,kcal:216,p:27,ch:1,g:12},
+      {name:'Aceite',grams:5,kcal:44,p:0,ch:0,g:5}
+    ]},
+    Comida:{items:[
+      {name:'Pavo o Pollo',grams:170,kcal:204,p:37,ch:0,g:5},
+      {name:'Arroz',grams:80,kcal:288,p:6,ch:63,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Aceite',grams:5,kcal:44,p:0,ch:0,g:5}
+    ]},
+    Merienda:{items:[
+      {name:'Tortitas',grams:40,kcal:155,p:3,ch:32,g:1},
+      {name:'Embutido de Pavo o Pollo',grams:100,kcal:100,p:18,ch:2,g:2},
+      {name:'Aceite',grams:10,kcal:88,p:0,ch:0,g:10},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Cena:{items:[
+      {name:'Contramuslo de Pollo o Pavo',grams:150,kcal:195,p:26,ch:0,g:10},
+      {name:'Boniato',grams:200,kcal:172,p:3,ch:40,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Aceite',grams:5,kcal:44,p:0,ch:0,g:5}
+    ]}
+  }},
+  fri:{meals:{
+    Desayuno:{items:[
+      {name:'Pan',grams:80,kcal:212,p:7,ch:39,g:3},
+      {name:'Jamón',grams:70,kcal:102,p:15,ch:1,g:4}
+    ]},
+    Comida:{items:[
+      {name:'Pavo o Pollo',grams:150,kcal:180,p:33,ch:0,g:5},
+      {name:'Arroz',grams:40,kcal:144,p:3,ch:32,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Merienda:{items:[
+      {name:'Caseína',grams:30,kcal:108,p:24,ch:2,g:1},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Cena:{items:[
+      {name:'Ternera',grams:150,kcal:210,p:32,ch:0,g:9},
+      {name:'Boniato',grams:200,kcal:172,p:3,ch:40,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0}
+    ]}
+  }},
+  sat:{meals:{
+    Desayuno:{items:[
+      {name:'Pan',grams:100,kcal:265,p:9,ch:49,g:3.2},
+      {name:'Huevo',grams:150,kcal:234,p:19,ch:2,g:16},
+      {name:'Clara de huevo',grams:100,kcal:52,p:11,ch:1,g:0}
+    ]},
+    Comida:{items:[
+      {name:'Pavo o Pollo',grams:250,kcal:300,p:55,ch:0,g:8},
+      {name:'Pasta',grams:40,kcal:141,p:5,ch:28,g:1},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Merienda:{items:[
+      {name:'Caseína',grams:25,kcal:90,p:20,ch:2,g:1},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Cena:{items:[
+      {name:'Contramuslo de Pollo',grams:200,kcal:260,p:34,ch:0,g:13},
+      {name:'Boniato',grams:200,kcal:172,p:3,ch:40,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0}
+    ]}
+  }},
+  sun:{meals:{
+    Desayuno:{items:[
+      {name:'Pan (tostada)',grams:80,kcal:212,p:7,ch:39,g:3},
+      {name:'Cecina',grams:70,kcal:112,p:22,ch:1,g:2},
+      {name:'Aceite',grams:5,kcal:44,p:0,ch:0,g:5}
+    ]},
+    Comida:{items:[
+      {name:'Guisantes',grams:200,kcal:162,p:11,ch:28,g:1},
+      {name:'Arroz',grams:40,kcal:144,p:3,ch:32,g:0},
+      {name:'Contramuslo de Pollo o Pavo',grams:170,kcal:221,p:29,ch:0,g:11},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Merienda:{items:[
+      {name:'Pan (tostadas)',grams:60,kcal:159,p:5,ch:29,g:2},
+      {name:'Pavo embutido',grams:100,kcal:100,p:18,ch:2,g:2},
+      {name:'Aceite',grams:10,kcal:88,p:0,ch:0,g:10},
+      {name:'Manzana',grams:180,kcal:94,p:1,ch:25,g:0}
+    ]},
+    Cena:{items:[
+      {name:'Pollo o Pavo',grams:130,kcal:156,p:29,ch:0,g:4},
+      {name:'Boniato',grams:200,kcal:172,p:3,ch:40,g:0},
+      {name:'Cebolla',grams:150,kcal:60,p:2,ch:14,g:0}
+    ]}
+  }}
+};
+// Nota fija que se muestra siempre bajo el plan del día (no afecta a macros).
+const FIXED_DIET_NOTE='3 litros de agua diarios + café sin azúcar.';
+
 // Tokens que representan DESCANSO (en split de Supabase puede venir 'OFF';
 // el código usa 'DESCANSO'/'DSC'). Nunca son chips de entreno.
 const REST_TOKENS=['OFF','DESCANSO','DSC','REST',''];
@@ -971,15 +1161,11 @@ let timerInt=null,timerSec=0,timerTotal=0;
 // ── ESTADO SUPABASE ──
 let appUser=null, clientData=null, coachData=null;
 let activePlan=null, planExercises=[];
-let activeNutritionPlan=null, nutritionOptions=[], weeklyNutrition=null;
-// True si el plan nutricional activo es distinto al plan al que apunta el weekly_nutrition
-// del cliente (típicamente tras promoción de un plan futuro). MyTracc muestra banner
-// "Reconfigura tu semana" para que el cliente vuelva a elegir sus opciones.
-let nutritionPlanChanged=false;
 // Próximo plan programado (si existe): {plan, date} para mostrar banner "Tu plan cambia el [fecha]"
-let scheduledTrainingPlan=null, scheduledNutritionPlan=null;
-// Estado del flujo de configurar dieta (paso 1: explorar+asignar, paso 2: revisar)
-let nutritionConfig={open:false, step:1, draft:null, selDay:0, changeMode:false};
+let scheduledTrainingPlan=null;
+// Reorganización semanal de la dieta fija: week_key -> array de 7 tokens de día
+// (qué día de FIXED_DIET_PLAN se muestra en cada slot lunes..domingo).
+let dietWeekReorders={};
 let activeMeso=null;
 let splitAdjustments=[]; // histórico de desplazamientos del split (split_adjustments)
 let weekReorders={}; // week_key -> plan[] (reorganización semanal desde week_reorders en Supabase)
@@ -1698,7 +1884,7 @@ const CLIENT_TOUR=[
   { sel:'#tab-home', tab:'home', t:'Inicio', b:'Tu pantalla de cada día: el entrenamiento de hoy, los días de la semana y tu resumen rápido (pasos, sueño, peso, actividad). Empieza siempre por aquí.' },
   { sel:'#tab-train', tab:'train', t:'Entreno', b:'Aquí haces tu entrenamiento del día. Apunta cada serie (repeticiones y peso) y usa el temporizador de descanso entre series. Puedes minimizarlo y seguir usando la app.' },
   { sel:'#tab-diet', tab:'diet', t:'Dieta', b:'Tu plan de comidas con las opciones que te puso tu entrenador y tu objetivo diario de calorías y macros. Aquí también registras tus cheats.' },
-  { sel:'#tab-progress', tab:'progress', t:'Progreso', b:'Tu evolución: peso actual y su gráfica, tus fotos de “antes vs ahora”, las revisiones y las notas de tu entrenador.' },
+  { sel:'#tab-progress', tab:'progress', t:'Progreso', b:'Acceso directo a los dos Excels que comparte tu entrenador: tu plan de entrenamiento y tu registro semanal.' },
   { sel:'#tour-anchor-agenda', tab:'home', t:'Tu agenda', b:'Aquí ves tus citas con el entrenador y puedes proponerle tú una (llamada, sesión…). También puedes apuntar notas en cualquier día y decidir si se las compartes.' },
   { sel:'#app-avatar', tab:'home', t:'Tu perfil', b:'Tus datos (objetivo, peso, revisión), tu cuota y tu cuestionario. Desde aquí completas tu perfil si te falta algo, y puedes volver a ver esta guía.' },
   { sel:null, tab:'home', t:'¡Listo!', b:'Eso es todo. Cuanto más registres, mejor podrá ayudarte tu entrenador. Puedes volver a ver esta guía desde tu perfil cuando quieras.' },
@@ -2395,29 +2581,19 @@ function iniciarEntrenoHoy(){
 // Banner amarillo "Tu plan cambia el [fecha]" — kind='train' o 'diet'
 // Devuelve '' si no hay plan futuro programado para esa sección.
 function scheduledBannerHtml(kind){
-  const sp=kind==='diet'?scheduledNutritionPlan:scheduledTrainingPlan;
+  // La dieta es fija (FIXED_DIET_PLAN): ya no hay planes de nutrición programados,
+  // solo el plan de entreno puede tener una activación futura.
+  const sp=kind==='diet'?null:scheduledTrainingPlan;
   if(!sp||!sp.activation_date)return '';
   const fecha=formatScheduledDate(sp.activation_date);
-  const tipoTxt=kind==='diet'?'plan de dieta':'plan';
-  return '<div onclick="switchTab(\''+(kind==='diet'?'diet':'train')+'\')" style="margin:0 16px 16px;background:#2563eb;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:11px;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.3);">'+
+  return '<div onclick="switchTab(\'train\')" style="margin:0 16px 16px;background:#2563eb;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:11px;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.3);">'+
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'+
-    '<div style="flex:1;font-size:14px;font-weight:700;color:#fff;">Tu '+tipoTxt+' cambia el '+fecha+'</div>'+
+    '<div style="flex:1;font-size:14px;font-weight:700;color:#fff;">Tu plan cambia el '+fecha+'</div>'+
   '</div>';
 }
 
-// Banner azul "Reconfigura tu semana" cuando el plan nutricional ha cambiado
-// y las elecciones del cliente quedaron huérfanas.
-function reconfigureBannerHtml(){
-  if (!nutritionPlanChanged) return '';
-  return '<div style="margin:0 16px 12px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;">'+
-    '<div style="width:30px;height:30px;border-radius:9px;background:#dbeafe;border:1.5px solid #bfdbfe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>'+
-    '</div>'+
-    '<div style="flex:1;font-size:12px;line-height:1.4;color:#1e40af;">'+
-      '<strong>Reconfigura tu semana.</strong> Tu plan nutricional cambió. Vuelve a elegir las opciones para cada día.'+
-    '</div>'+
-  '</div>';
-}
+// La dieta ahora es fija (ya no hay reconfiguración de plan nutricional).
+function reconfigureBannerHtml(){ return ''; }
 
 function renderTrain(){
   const wk=weekKey(),di=state.selectedDay,todayI=todayIdx();
@@ -2697,8 +2873,7 @@ function cheatsButtonHtml(){
 
 // Botón de acceso a la lista de la compra (se calcula desde la dieta del cliente)
 function shoppingButtonHtml(){
-  const tieneDieta=(nutritionOptions||[]).some(o=>o.meals && Object.values(o.meals).some(m=>(m.items||[]).length));
-  if(!tieneDieta) return ''; // sin dieta con alimentos no tiene sentido mostrarlo
+  // La dieta fija (FIXED_DIET_PLAN) siempre tiene alimentos, así que el botón se muestra siempre.
   return '<button onclick="openShopping()" style="width:100%;border:1.5px solid #eaeae6;background:#fff;border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:\'DM Sans\',sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
     '<span style="display:flex;align-items:center;gap:11px">'+
       '<span style="width:38px;height:38px;border-radius:11px;background:#f0fdf4;border:1.5px solid rgba(22,163,74,.18);display:flex;align-items:center;justify-content:center;color:#16a34a;flex-shrink:0"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>'+
@@ -2709,36 +2884,6 @@ function shoppingButtonHtml(){
     '</span>'+
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'+
   '</button>';
-}
-
-function renderDiet(){
-  const sel=state.dietDay, dayName=DAYS[sel];
-  const isToday=sel===todayIdx();
-
-  // La dieta SIEMPRE viene de Supabase. Si no hay plan o no hay opciones
-  // con comidas reales, se muestra un estado vacío honesto (nunca datos
-  // hardcodeados de otro cliente).
-  const hasRealOptions=activeNutritionPlan&&nutritionOptions.length>0&&
-    nutritionOptions.some(o=>o.meals&&Object.keys(o.meals).length>0);
-
-  if(hasRealOptions){
-    return renderDietSupabase(sel, dayName, isToday);
-  }
-
-  // Sin plan de nutrición asignado
-  return '<div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#fcf9f8">'+
-    '<div style="flex:1;overflow-y:auto;padding:68px 16px 14px;-webkit-overflow-scrolling:touch;scrollbar-width:none">'+
-      '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;margin-bottom:4px">Plan nutricional</div>'+
-      '<div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:#111;letter-spacing:-.5px;line-height:1.1;margin-bottom:20px">Tu <em style="color:#16a34a;">dieta.</em></div>'+
-      cheatsButtonHtml()+
-      '<div style="background:#f0fdf4;border:1.5px solid rgba(22,163,74,.2);border-radius:20px;padding:28px 24px;text-align:center;margin-top:8px">'+
-        '<div style="width:56px;height:56px;border-radius:16px;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#16a34a"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10"/><path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z"/><path d="M11.38 12a2.4 2.4 0 0 1-.4-4.77 2.4 2.4 0 0 1 3.2-2.77 2.4 2.4 0 0 1 3.47-.63 2.4 2.4 0 0 1 3.37 3.37 2.4 2.4 0 0 1-1.1 3.7"/><path d="m13 12 4-4"/></svg></div>'+
-        '<div style="font-family:\'DM Serif Display\',serif;font-size:22px;color:#111;margin-bottom:8px">Aún sin dieta.</div>'+
-        '<div style="font-size:14px;color:#666;line-height:1.6;margin-bottom:20px">Tu entrenador todavía no te ha asignado un plan de nutrición. En cuanto lo haga, aparecerá aquí.</div>'+
-        '<div style="font-size:12px;color:rgba(22,163,74,.7);font-weight:600;line-height:1.5">Mientras tanto, céntrate en tus entrenamientos.</div>'+
-      '</div>'+
-    '</div>'+
-  '</div>';
 }
 
 // ─── COMIDAS INTERCAMBIABLES (estilo Harbiz, con sentido por macros) ───
@@ -2760,101 +2905,52 @@ function mealTotals(meal){
   return {kcal,ch,g,p};
 }
 
-// Lee las sustituciones por comida guardadas para un día concreto
-function mealOverridesForDay(dayKey){
-  let mo=weeklyNutrition&&weeklyNutrition.meal_overrides;
-  if(typeof mo==='string'){try{mo=JSON.parse(mo);}catch(e){mo=null;}}
-  return (mo&&mo[dayKey])||{};
-}
-
-// Devuelve, para cada comida del día, la versión efectiva (base + tus cambios)
-// y de qué opción procede. Null si el día no tiene opción base asignada.
-function effectiveDayMeals(dayKey){
-  const baseNum=weeklyNutrition?.[dayKey+'_option']||null;
-  const baseOpt=baseNum?nutritionOptions.find(o=>o.option_number===baseNum):null;
-  if(!baseOpt||!baseOpt.meals)return null;
-  const ov=mealOverridesForDay(dayKey);
-  const out={};
-  Object.keys(baseOpt.meals).forEach(realKey=>{
-    const mealName=realKey.toLowerCase();
-    let fromOpt=baseNum, meal=baseOpt.meals[realKey];
-    const ovNum=ov[mealName];
-    if(ovNum&&ovNum!==baseNum){
-      const alt=nutritionOptions.find(o=>o.option_number===ovNum);
-      if(alt&&alt.meals){
-        const altKey=Object.keys(alt.meals).find(k=>k.toLowerCase()===mealName);
-        if(altKey&&(alt.meals[altKey].items||[]).length){meal=alt.meals[altKey];fromOpt=ovNum;}
-      }
-    }
-    out[mealName]={meal,fromOption:fromOpt};
-  });
-  return out;
-}
-
-// Totales del día a partir de las comidas efectivas
-function effectiveDayTotals(dayKey){
-  const eff=effectiveDayMeals(dayKey);
-  if(!eff)return {kcal:0,ch:0,g:0,p:0};
+// Totales del día completo (las 4 comidas) para el token de día dado.
+function dietDayTotals(token){
+  const day=FIXED_DIET_PLAN[token];
+  if(!day)return {kcal:0,ch:0,g:0,p:0};
   let kcal=0,ch=0,g=0,p=0;
-  Object.values(eff).forEach(e=>{const t=mealTotals(e.meal);kcal+=t.kcal;ch+=t.ch;g+=t.g;p+=t.p;});
+  Object.values(day.meals).forEach(m=>{const t=mealTotals(m);kcal+=t.kcal;ch+=t.ch;g+=t.g;p+=t.p;});
   return {kcal,ch,g,p};
 }
 
-// Variantes disponibles de una comida (la versión de esa comida en cada opción)
-function mealVariants(mealName){
-  const out=[];
-  nutritionOptions.forEach(o=>{
-    const meals=o.meals||{};
-    const key=Object.keys(meals).find(k=>k.toLowerCase()===mealName);
-    if(key&&(meals[key].items||[]).length){out.push({optNum:o.option_number,meal:meals[key],totals:mealTotals(meals[key])});}
+// Plan de días de la semana vista (array de 7 tokens 'mon'..'sun'), aplicando
+// la reorganización guardada por el cliente si existe para esa semana.
+function getDietWeekPlan(wk){
+  if(dietWeekReorders&&Array.isArray(dietWeekReorders[wk]))return [...dietWeekReorders[wk]];
+  return [...DIET_DAY_TOKENS];
+}
+async function saveDietWeekReorder(wk,plan){
+  if(!Array.isArray(plan))return;
+  dietWeekReorders[wk]=[...plan];
+  if(!clientData||!sb)return;
+  try{
+    const {error}=await sb.from('diet_week_reorders')
+      .upsert({client_id:clientData.id,week_key:wk,plan:plan,updated_at:new Date().toISOString()},
+              {onConflict:'client_id,week_key'});
+    if(error){console.error('diet_week_reorders upsert error:',error);showToast('Error al guardar reorganización','red','Comprueba tu conexión');}
+  }catch(e){console.error('saveDietWeekReorder:',e);}
+}
+
+function selectDietDay(i){state.dietDay=i;openMeals={};render();}
+function toggleDietMeal(mealName){
+  const sc=document.querySelector('#main-content [style*="overflow-y:auto"]')||document.querySelector('#main-content');
+  const scrollTop=sc?sc.scrollTop:0;
+  openMeals[mealName]=!openMeals[mealName];
+  render();
+  requestAnimationFrame(()=>{
+    const sc2=document.querySelector('#main-content [style*="overflow-y:auto"]')||document.querySelector('#main-content');
+    if(sc2)sc2.scrollTop=scrollTop;
   });
-  return out;
 }
 
-// ¿La variante mantiene el día en plan respecto a la comida que sustituye?
-function variantFits(altTot,curTot){
-  const kTol=Math.max(60,curTot.kcal*0.10);
-  return Math.abs(altTot.kcal-curTot.kcal)<=kTol && Math.abs(altTot.p-curTot.p)<=12;
-}
-
-function renderDietSupabase(sel, dayName, isToday){
-  const dayKey=DAY_KEYS[sel];
-  const selectedOptNum=weeklyNutrition?.[dayKey+'_option']||null;
-  const selectedOpt=selectedOptNum?nutritionOptions.find(o=>o.option_number===selectedOptNum):null;
-  const SHORT2=['L','M','X','J','V','S','D'];
-
-  // Calcular kcal totales de la opción asignada al día actual
-  const totalsFor=(opt)=>{
-    if(!opt||!opt.meals)return {kcal:0,ch:0,g:0,p:0};
-    let kcal=0,ch=0,g=0,p=0;
-    Object.values(opt.meals).forEach(m=>(m.items||[]).forEach(i=>{kcal+=(i.kcal||0);ch+=(i.ch||0);g+=(i.g||0);p+=(i.p||0);}));
-    return {kcal,ch,g,p};
-  };
-  // Totales del día con las comidas efectivas (base + tus cambios)
-  const baseTot=totalsFor(selectedOpt);           // suma de la opción asignada al día
-  const todayTot=effectiveDayTotals(dayKey);      // lo que comes realmente tras tus cambios
-  // Objetivo REAL del plan (lo que fija el entrenador en Tracc: kcal_goal/carbs_g/fat_g/protein_g).
-  // El denominador del "x / objetivo" debe ser esto, no la suma de la opción.
-  // Fallback a la suma de la opción si el plan no trae objetivo (planes antiguos).
-  const planGoal={
-    kcal:Number(activeNutritionPlan?.kcal_goal)||0,
-    ch:Number(activeNutritionPlan?.carbs_g)||0,
-    g:Number(activeNutritionPlan?.fat_g)||0,
-    p:Number(activeNutritionPlan?.protein_g)||0,
-  };
-  const goalTot={
-    kcal:planGoal.kcal||baseTot.kcal,
-    ch:planGoal.ch||baseTot.ch,
-    g:planGoal.g||baseTot.g,
-    p:planGoal.p||baseTot.p,
-  };
-  // "En plan" = lo que comes hoy cuadra con el OBJETIVO del entrenador (no con la opción).
-  const dayInPlan=Math.abs(todayTot.kcal-goalTot.kcal)<=Math.max(80,goalTot.kcal*0.06) && Math.abs(todayTot.p-goalTot.p)<=15;
-
-  // ¿El plan se actualizó después de la última configuración del cliente?
-  const planUpdatedAt=activeNutritionPlan?.updated_at||activeNutritionPlan?.created_at||null;
-  const configuredAt=weeklyNutrition?.configured_at||null;
-  const needsConfig=!!planUpdatedAt && (!configuredAt || new Date(planUpdatedAt)>new Date(configuredAt));
+function renderDiet(){
+  const sel=state.dietDay, dayName=DAYS[sel];
+  const isToday=sel===todayIdx();
+  const wk=weekKey();
+  const dayToken=(getDietWeekPlan(wk)[sel])||DIET_DAY_TOKENS[sel];
+  const day=FIXED_DIET_PLAN[dayToken];
+  const todayTot=dietDayTotals(dayToken);
 
   // Header
   const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -2865,30 +2961,9 @@ function renderDietSupabase(sel, dayName, isToday){
     '<div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:#111;letter-spacing:-.5px;line-height:1.1;">'+(isToday?'Tu plan de <em style="color:#16a34a;">hoy.</em>':dayName+'.')+'</div>'+
   '</div>';
 
-  // Banner "Pol ha actualizado tu plan"
-  let banner='';
-  if(needsConfig){
-    banner='<div onclick="openNutritionConfig()" style="margin:0 16px 14px;background:linear-gradient(135deg,#111 0%,#1a2e1a 100%);border-radius:20px;padding:16px 18px;position:relative;overflow:hidden;cursor:pointer;">'+
-      '<div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(22,163,74,.15) 0%,transparent 70%);pointer-events:none;"></div>'+
-      '<div style="display:flex;align-items:flex-start;gap:12px;position:relative;">'+
-        '<div style="width:36px;height:36px;border-radius:11px;background:rgba(22,163,74,.2);border:1.5px solid rgba(22,163,74,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">'+
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12"/><path d="M12 12C12 12 8 10 8 7a4 4 0 018 0c0 3-4 5-4 5z"/><circle cx="8" cy="6" r="3"/><circle cx="16" cy="6" r="3"/><circle cx="12" cy="4" r="3"/></svg>'+
-        '</div>'+
-        '<div style="flex:1;">'+
-          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'+
-            '<div style="font-size:12px;font-weight:800;color:#fff;letter-spacing:-.1px;">'+(coachData?.name?coachData.name+' ha actualizado tu plan':'Tu plan se ha actualizado')+'</div>'+
-            '<div style="width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0;"></div>'+
-          '</div>'+
-          '<div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.5;margin-bottom:12px;">Tienes '+nutritionOptions.length+' opciones disponibles. Elige cómo distribuirlas en tu semana.</div>'+
-          '<button style="height:34px;padding:0 16px;border-radius:10px;background:#16a34a;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:\'DM Sans\',sans-serif;letter-spacing:-.1px;">Configurar semana →</button>'+
-        '</div>'+
-      '</div>'+
-    '</div>';
-  }
-
-  // Card calorías (diseño exacto): kcal grande izq + anillo pequeño dcha + macros 3 columnas
-  const _CIRC = 2*Math.PI*28;
-  const _pctK = (selectedOpt&&goalTot.kcal)? Math.min(100,Math.round(todayTot.kcal/goalTot.kcal*100)) : 0;
+  // Card calorías (kcal totales del día + anillo de referencia + macros)
+  const _CIRC=2*Math.PI*28;
+  const _pctK=Math.min(100,Math.round(todayTot.kcal/DAILY_MACROS.kcal*100));
   const _macroCol=(label,v,t,col)=>{
     const pct=t?Math.min(100,Math.round(v/t*100)):0;
     return '<div>'+
@@ -2899,662 +2974,236 @@ function renderDietSupabase(sel, dayName, isToday){
       '<div style="height:6px;background:#eef0ec;border-radius:3px;overflow:hidden;"><div style="height:6px;width:'+pct+'%;background:'+col+';border-radius:3px;"></div></div>'+
     '</div>';
   };
-  const macrosCard='<div style="margin:0 16px 16px;background:#fff;border:1.5px solid '+(needsConfig?'#eaeae6':'#f0efec')+';border-radius:24px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.04);'+(needsConfig?'opacity:.55;':'')+'">'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:'+(selectedOpt?'20px':'0')+';">'+
+  const macrosCard='<div style="margin:0 16px 16px;background:#fff;border:1.5px solid #f0efec;border-radius:24px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.04);">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;">'+
       '<div>'+
-        '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9a9a9a;margin-bottom:6px;">Calorías Consumidas</div>'+
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9a9a9a;margin-bottom:6px;">Calorías estimadas</div>'+
         '<div style="display:flex;align-items:baseline;gap:7px;">'+
-          '<span style="font-family:\'DM Serif Display\',serif;font-size:40px;color:#006b2c;letter-spacing:-1px;line-height:1;">'+(selectedOpt?Math.round(todayTot.kcal).toLocaleString('es-ES'):'—')+'</span>'+
-          '<span style="font-size:14px;color:#bbb;font-weight:600;">/ '+(selectedOpt?Math.round(goalTot.kcal).toLocaleString('es-ES'):'')+' kcal</span>'+
+          '<span style="font-family:\'DM Serif Display\',serif;font-size:40px;color:#006b2c;letter-spacing:-1px;line-height:1;">'+Math.round(todayTot.kcal).toLocaleString('es-ES')+'</span>'+
+          '<span style="font-size:14px;color:#bbb;font-weight:600;">/ '+Math.round(DAILY_MACROS.kcal).toLocaleString('es-ES')+' kcal</span>'+
         '</div>'+
-        (selectedOpt?'<div style="margin-top:8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;color:'+(dayInPlan?'#006b2c':'#d97706')+';"><span style="width:7px;height:7px;border-radius:50%;background:'+(dayInPlan?'#006b2c':'#d97706')+';"></span>'+(dayInPlan?'En plan':'Ajustado')+'</div>':'')+
       '</div>'+
       '<div style="position:relative;width:66px;height:66px;flex-shrink:0;">'+
         '<svg width="66" height="66" viewBox="0 0 66 66" style="transform:rotate(-90deg);"><circle cx="33" cy="33" r="28" fill="none" stroke="#eef0ec" stroke-width="6"/><circle cx="33" cy="33" r="28" fill="none" stroke="#006b2c" stroke-width="6" stroke-linecap="round" stroke-dasharray="'+_CIRC.toFixed(1)+'" stroke-dashoffset="'+(_CIRC*(1-_pctK/100)).toFixed(1)+'"/></svg>'+
-        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:\'DM Sans\',sans-serif;font-weight:800;font-size:15px;color:#006b2c;">'+(selectedOpt?_pctK+'%':'—')+'</div>'+
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:\'DM Sans\',sans-serif;font-weight:800;font-size:15px;color:#006b2c;">'+_pctK+'%</div>'+
       '</div>'+
     '</div>'+
-    (selectedOpt?('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">'+_macroCol('Prot.',todayTot.p,goalTot.p,'#006b2c')+_macroCol('Carbs.',todayTot.ch,goalTot.ch,'#316bf3')+_macroCol('Grasas',todayTot.g,goalTot.g,'#fe932c')+'</div>'):'<div style="font-size:12px;color:#bbb;">Configura el plan para ver los datos</div>')+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">'+_macroCol('Prot.',todayTot.p,DAILY_MACROS.protein,'#006b2c')+_macroCol('Carbs.',todayTot.ch,DAILY_MACROS.carbs,'#316bf3')+_macroCol('Grasas',todayTot.g,DAILY_MACROS.fat,'#fe932c')+'</div>'+
   '</div>';
 
-  // Selector de días: abreviatura + fecha (diseño plan del día)
+  // Selector de días
   const SHORT3=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
   const daySelector='<div style="padding:0 16px;margin-bottom:16px;display:flex;gap:6px;">'+
     SHORT3.map((d,i)=>{
       const isSel=i===sel;
-      const dk=DAY_KEYS[i];
-      const hasOpt=!!(weeklyNutrition&&weeklyNutrition[dk+'_option']);
       const _d=new Date();_d.setDate(_d.getDate()+(i-todayIdx()));
       const dnum=_d.getDate();
       return '<div onclick="selectDietDay('+i+')" style="flex:1;background:'+(isSel?'#006b2c':'#fff')+';border-radius:14px;padding:9px 0;display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px solid '+(isSel?'#006b2c':'#f0efec')+';cursor:pointer;transition:background .15s,border-color .15s;">'+
         '<div style="font-size:10px;font-weight:700;color:'+(isSel?'rgba(255,255,255,.85)':'#9a9a9a')+';letter-spacing:.03em;">'+d+'</div>'+
-        '<div style="font-size:15px;font-weight:800;font-family:\'DM Sans\',sans-serif;color:'+(isSel?'#fff':(hasOpt?'#1c1b1b':'#c8c6c1'))+';">'+dnum+'</div>'+
+        '<div style="font-size:15px;font-weight:800;font-family:\'DM Sans\',sans-serif;color:'+(isSel?'#fff':'#1c1b1b')+';">'+dnum+'</div>'+
       '</div>';
     }).join('')+
   '</div>';
 
-  // Comidas efectivas del día (base + tus cambios), con opción de intercambiar
-  let mealsHtml='';
-  if(selectedOpt){
-    const eff=effectiveDayMeals(dayKey)||{};
-    mealsHtml='<div style="padding:0 16px;display:flex;flex-direction:column;gap:8px;">';
-    DIET_MEAL_ORDER.forEach(mealName=>{
-      const e=eff[mealName];
-      const m=e?e.meal:null;
-      if(!m||!m.items?.length)return;
-      const fromOpt=e.fromOption;
-      const curTot=mealTotals(m);
-      const mc=mealStyle(mealName);
-      const mKcal=curTot.kcal;
-      const isOpen=openMeals[mealName];
-      const preview=m.items.slice(0,3).map(i=>i.name).join(' · ');
-      const variants=mealVariants(mealName);
-      const canSwap=variants.length>=2;
-      const isSwapping=state.swapMeal===mealName;
-      mealsHtml+=
-        '<div style="background:#fff;border-radius:18px;border:1.5px solid '+(isOpen||isSwapping?'#111':'#eaeae6')+';overflow:hidden;box-shadow:'+(isOpen||isSwapping?'0 2px 12px rgba(0,0,0,.1)':'0 1px 3px rgba(0,0,0,.04)')+';">'+
-          '<div onclick="toggleDietMeal(\''+mealName+'\')" style="padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;'+(isOpen?'border-bottom:1px solid #f0f0ee;':'')+'">'+
-            '<div style="width:38px;height:38px;border-radius:12px;background:'+mc.bg+';border:1.5px solid '+mc.border+';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:'+mc.color+';">'+mc.svg+'</div>'+
-            '<div style="flex:1;min-width:0;">'+
-              '<div style="font-size:13.5px;font-weight:700;color:#111;margin-bottom:2px;text-transform:capitalize;">'+mealName+'</div>'+
-              '<div style="font-size:12px;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(isOpen?m.items.length+' alimentos':preview)+'</div>'+
-            '</div>'+
-            '<div style="text-align:right;flex-shrink:0;">'+
-              '<div style="font-size:13px;font-weight:700;color:#111;">'+Math.round(mKcal)+'</div>'+
-              '<div style="font-size:9px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.04em;">kcal</div>'+
-            '</div>'+
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="'+(isOpen?'#111':'#ccc')+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'"><polyline points="6 9 12 15 18 9"/></svg>'+
+  // Comidas del día fijo (sin opciones intercambiables: el plan es fijo)
+  let mealsHtml='<div style="padding:0 16px;display:flex;flex-direction:column;gap:8px;">';
+  DIET_MEAL_ORDER.forEach(mealNameLower=>{
+    const realKey=Object.keys(day.meals).find(k=>k.toLowerCase()===mealNameLower);
+    const m=realKey?day.meals[realKey]:null;
+    if(!m||!m.items?.length)return;
+    const curTot=mealTotals(m);
+    const mc=mealStyle(mealNameLower);
+    const isOpen=openMeals[mealNameLower];
+    const preview=m.items.slice(0,3).map(i=>i.name).join(' · ');
+    mealsHtml+=
+      '<div style="background:#fff;border-radius:18px;border:1.5px solid '+(isOpen?'#111':'#eaeae6')+';overflow:hidden;box-shadow:'+(isOpen?'0 2px 12px rgba(0,0,0,.1)':'0 1px 3px rgba(0,0,0,.04)')+';">'+
+        '<div onclick="toggleDietMeal(\''+mealNameLower+'\')" style="padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;'+(isOpen?'border-bottom:1px solid #f0f0ee;':'')+'">'+
+          '<div style="width:38px;height:38px;border-radius:12px;background:'+mc.bg+';border:1.5px solid '+mc.border+';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:'+mc.color+';">'+mc.svg+'</div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-size:13.5px;font-weight:700;color:#111;margin-bottom:2px;text-transform:capitalize;">'+realKey+'</div>'+
+            '<div style="font-size:12px;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(isOpen?m.items.length+' alimentos':preview)+'</div>'+
           '</div>'+
-          (isOpen?
-            '<div style="padding:14px 16px;">'+
-              '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">'+
-                m.items.map((item,idx)=>
-                  '<div>'+
-                    '<div style="display:flex;align-items:center;justify-content:space-between;">'+
-                      '<div style="font-size:13px;font-weight:600;color:#111;">'+item.name+(item.grams?' ('+item.grams+'g)':'')+'</div>'+
-                      (item.kcal?'<div style="font-size:13px;font-weight:700;color:#111;flex-shrink:0;margin-left:8px;">'+Math.round(item.kcal)+' kcal</div>':'')+
-                    '</div>'+
-                    (item.ch||item.g||item.p?
-                      '<div style="display:flex;gap:6px;margin-top:3px;">'+
-                        (item.ch?'<span style="font-size:10px;color:#bbb;font-weight:600;">'+Math.round(item.ch)+'g CH</span><span style="font-size:10px;color:#bbb;">·</span>':'')+
-                        (item.g?'<span style="font-size:10px;color:#bbb;font-weight:600;">'+Math.round(item.g)+'g G</span><span style="font-size:10px;color:#bbb;">·</span>':'')+
-                        (item.p?'<span style="font-size:10px;color:#bbb;font-weight:600;">'+Math.round(item.p)+'g P</span>':'')+
-                      '</div>':'')+'</div>'+
-                  (idx<m.items.length-1?'<div style="height:1px;background:#f0f0ee;margin-top:10px;"></div>':'')
-                ).join('')+
-              '</div>'+
-              '<div style="background:#f5f5f3;border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">'+
-                '<div style="display:flex;gap:10px;">'+
-                  ['ch','g','p'].map(mk=>{
-                    const t=m.items.reduce((a,i)=>a+(i[mk]||0),0);
-                    return t?'<span style="font-size:11px;font-weight:700;color:#888;">'+Math.round(t)+'g '+mk.toUpperCase()+'</span>':'';
-                  }).join('')+
-                '</div>'+
-                '<div style="font-size:14px;font-weight:800;color:#111;">'+Math.round(mKcal)+' kcal</div>'+
-              '</div>'+
-            '</div>':'')+
-          // Barra de cambio de comida (solo si hay 2+ variantes)
-          (canSwap?
-            '<div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f5f5f3;">'+
-              '<span style="font-size:12px;color:#999;">Opción '+fromOpt+' de tu '+mealName+'</span>'+
-              '<button onclick="toggleMealSwap(\''+mealName+'\')" style="display:flex;align-items:center;gap:5px;background:'+(isSwapping?'#006b2c':'#f5f5f3')+';border:none;color:'+(isSwapping?'#fff':'#666')+';border-radius:9px;padding:6px 11px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:\'DM Sans\',sans-serif;">'+
-                '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11a4 4 0 004-4V7"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9a4 4 0 00-4 4v2"/></svg>'+
-                (isSwapping?'Cerrar':'Cambiar '+mealName)+
-              '</button>'+
-            '</div>':'')+
-          // Selector de variantes recomendadas (cuadra / desvío kcal)
-          (canSwap&&isSwapping?
-            '<div style="padding:4px 16px 16px;">'+
-              '<div style="font-size:11.5px;color:#bbb;margin-bottom:10px;line-height:1.5;">Las marcadas mantienen tu día en plan.</div>'+
-              '<div style="display:flex;flex-direction:column;gap:8px;">'+
-                variants.map(v=>{
-                  const isCur=v.optNum===fromOpt;
-                  const fits=variantFits(v.totals,curTot);
-                  const delta=Math.round(v.totals.kcal-curTot.kcal);
-                  const vname=v.meal.items.slice(0,3).map(i=>i.name).join(', ');
-                  let badge;
-                  if(isCur)badge='<span style="font-size:11px;font-weight:700;background:#e9f6ee;color:#006b2c;padding:2px 9px;border-radius:8px;">Actual</span>';
-                  else if(fits)badge='<span style="font-size:11px;font-weight:700;color:#16a34a;display:inline-flex;align-items:center;gap:3px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Cuadra</span>';
-                  else badge='<span style="font-size:11px;font-weight:700;color:#d97706;display:inline-flex;align-items:center;gap:3px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'+(delta>0?'+':'')+delta+' kcal</span>';
-                  return '<div onclick="selectMealVariant(\''+mealName+'\','+v.optNum+')" style="border:'+(isCur?'2px solid #006b2c':'1.5px solid #eaeae6')+';border-radius:13px;padding:11px 13px;cursor:pointer;background:#fff;">'+
-                    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">'+
-                      '<span style="font-size:13px;font-weight:700;color:#111;line-height:1.25;">'+escHtml(vname)+'</span>'+badge+
-                    '</div>'+
-                    '<div style="font-size:11.5px;color:#999;">'+Math.round(v.totals.kcal)+' kcal · '+Math.round(v.totals.ch)+' CH · '+Math.round(v.totals.g)+' G · '+Math.round(v.totals.p)+' P</div>'+
-                  '</div>';
+          '<div style="text-align:right;flex-shrink:0;">'+
+            '<div style="font-size:13px;font-weight:700;color:#111;">'+Math.round(curTot.kcal)+'</div>'+
+            '<div style="font-size:9px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.04em;">kcal</div>'+
+          '</div>'+
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="'+(isOpen?'#111':'#ccc')+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'"><polyline points="6 9 12 15 18 9"/></svg>'+
+        '</div>'+
+        (isOpen?
+          '<div style="padding:14px 16px;">'+
+            '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">'+
+              m.items.map((item,idx)=>
+                '<div>'+
+                  '<div style="display:flex;align-items:center;justify-content:space-between;">'+
+                    '<div style="font-size:13px;font-weight:600;color:#111;">'+item.name+(item.grams?' ('+item.grams+'g)':'')+'</div>'+
+                    (item.kcal?'<div style="font-size:13px;font-weight:700;color:#111;flex-shrink:0;margin-left:8px;">'+Math.round(item.kcal)+' kcal</div>':'')+
+                  '</div>'+
+                  (item.ch||item.g||item.p?
+                    '<div style="display:flex;gap:6px;margin-top:3px;">'+
+                      (item.ch?'<span style="font-size:10px;color:#bbb;font-weight:600;">'+Math.round(item.ch)+'g CH</span><span style="font-size:10px;color:#bbb;">·</span>':'')+
+                      (item.g?'<span style="font-size:10px;color:#bbb;font-weight:600;">'+Math.round(item.g)+'g G</span><span style="font-size:10px;color:#bbb;">·</span>':'')+
+                      (item.p?'<span style="font-size:10px;color:#bbb;font-weight:600;">'+Math.round(item.p)+'g P</span>':'')+
+                    '</div>':'')+'</div>'+
+                (idx<m.items.length-1?'<div style="height:1px;background:#f0f0ee;margin-top:10px;"></div>':'')
+              ).join('')+
+            '</div>'+
+            '<div style="background:#f5f5f3;border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">'+
+              '<div style="display:flex;gap:10px;">'+
+                ['ch','g','p'].map(mk=>{
+                  const t=m.items.reduce((a,i)=>a+(i[mk]||0),0);
+                  return t?'<span style="font-size:11px;font-weight:700;color:#888;">'+Math.round(t)+'g '+mk.toUpperCase()+'</span>':'';
                 }).join('')+
               '</div>'+
-            '</div>':'')+
-        '</div>';
-    });
-    mealsHtml+='</div>';
-  } else {
-    mealsHtml='<div style="margin:0 16px;background:#fff;border:1.5px solid #eaeae6;border-radius:18px;padding:32px 20px;text-align:center;">'+
-      '<div style="width:48px;height:48px;border-radius:14px;background:#f0f0ec;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#ccc"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>'+
-      '<div style="font-size:14px;font-weight:600;color:#111;margin-bottom:4px;">Día sin asignar</div>'+
-      '<div style="font-size:12px;color:#bbb;margin-bottom:14px;">Aún no has elegido qué opción comer este día</div>'+
-      '<button onclick="openNutritionConfig()" style="height:36px;padding:0 16px;border-radius:10px;background:#111;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:\'DM Sans\',sans-serif;">Configurar semana</button>'+
-    '</div>';
-  }
+              '<div style="font-size:14px;font-weight:800;color:#111;">'+Math.round(curTot.kcal)+' kcal</div>'+
+            '</div>'+
+          '</div>':'')+
+      '</div>';
+  });
+  mealsHtml+='</div>';
 
-  // Botón editar distribución siempre visible al final
+  const noteHtml='<div style="margin:14px 16px 0;font-size:12.5px;color:#9a9a95;text-align:center;line-height:1.5;">'+escHtml(FIXED_DIET_NOTE)+'</div>';
+
+  // Botón reorganizar semana (drag & drop) sustituye al antiguo "Editar distribución semanal"
   const editBtn='<div style="padding:14px 16px 8px;">'+
-    '<button onclick="openNutritionConfig()" style="width:100%;height:54px;border-radius:15px;background:#006b2c;border:none;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;color:#fff;box-shadow:0 6px 16px rgba(0,107,44,.22);">'+
+    '<button onclick="openEditarSemanaDieta()" style="width:100%;height:54px;border-radius:15px;background:#006b2c;border:none;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;color:#fff;box-shadow:0 6px 16px rgba(0,107,44,.22);">'+
       '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
-      'Editar distribución semanal'+
+      'Reorganizar semana'+
     '</button>'+
   '</div>';
 
   return '<div style="display:flex;flex-direction:column;height:100%;overflow:hidden;background:#fcf9f8">'+
     '<div style="flex:1;overflow-y:auto;padding-bottom:80px;-webkit-overflow-scrolling:touch;scrollbar-width:none">'+
-      header+scheduledBannerHtml('diet')+reconfigureBannerHtml()+banner+daySelector+macrosCard+'<div style="padding:0 16px 16px;">'+'<button id="tour-anchor-cheats" onclick="openCheats()" style="width:100%;height:54px;margin-bottom:11px;border-radius:15px;background:#006b2c;border:none;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;color:#fff;box-shadow:0 6px 16px rgba(0,107,44,.22);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Registrar Comida Trampa</button>'+'<button onclick="openShopping()" style="width:100%;height:54px;border-radius:15px;background:#006b2c;border:none;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;color:#fff;box-shadow:0 6px 16px rgba(0,107,44,.22);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>Lista de la compra</button>'+'</div>'+mealsHtml+editBtn+
+      header+scheduledBannerHtml('diet')+daySelector+macrosCard+noteHtml+'<div style="padding:16px 16px 0;">'+'<button id="tour-anchor-cheats" onclick="openCheats()" style="width:100%;height:54px;margin-bottom:11px;border-radius:15px;background:#006b2c;border:none;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;color:#fff;box-shadow:0 6px 16px rgba(0,107,44,.22);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Registrar Comida Trampa</button>'+'<button onclick="openShopping()" style="width:100%;height:54px;border-radius:15px;background:#006b2c;border:none;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;color:#fff;box-shadow:0 6px 16px rgba(0,107,44,.22);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>Lista de la compra</button>'+'</div>'+mealsHtml+editBtn+
     '</div>'+
   '</div>';
 }
 
-async function selectDayOption(optNum){
-  if(!clientData||!activeNutritionPlan)return;
-  const dayKey=DAY_KEYS[state.dietDay];
-  const wkStart=getWeekStart();
-  let ok=false;
-  if(weeklyNutrition){
-    const {data,error}=await sb.from('weekly_nutrition')
-      .update({[dayKey+'_option']:optNum,configured_at:new Date().toISOString()})
-      .eq('id',weeklyNutrition.id).select().single();
-    if(error){console.error('weekly_nutrition update error:',error);}
-    else if(data){weeklyNutrition=data;ok=true;}
-  } else {
-    const {data,error}=await sb.from('weekly_nutrition').insert({
-      client_id:clientData.id,nutrition_plan_id:activeNutritionPlan.id,
-      week_start:wkStart,[dayKey+'_option']:optNum,configured_at:new Date().toISOString()
-    }).select().single();
-    if(error){console.error('weekly_nutrition insert error:',error);}
-    else if(data){weeklyNutrition=data;ok=true;}
-  }
-  if(!ok){
-    showToast('No se pudo guardar','red','Inténtalo de nuevo');
-    return;
-  }
-  nutritionPlanChanged=false; // ya reconfiguró
-  openMeals={};
-  showToast('Guardado','green');
-  render();
-}
-
-// Abre/cierra el selector de variantes de una comida
-function toggleMealSwap(mealName){
-  state.swapMeal=(state.swapMeal===mealName)?null:mealName;
-  render();
-}
-
-// Cambia una comida del día por la versión de otra opción y lo guarda
-async function selectMealVariant(mealName, optNum){
-  if(!clientData||!weeklyNutrition)return;
-  const dayKey=DAY_KEYS[state.dietDay];
-  const baseNum=weeklyNutrition[dayKey+'_option']||null;
-  // Construye el objeto de overrides actualizado
-  let mo=weeklyNutrition.meal_overrides;
-  if(typeof mo==='string'){try{mo=JSON.parse(mo);}catch(e){mo={};}}
-  if(!mo||typeof mo!=='object')mo={};
-  if(!mo[dayKey])mo[dayKey]={};
-  if(optNum===baseNum){ delete mo[dayKey][mealName]; if(!Object.keys(mo[dayKey]).length)delete mo[dayKey]; }
-  else { mo[dayKey][mealName]=optNum; }
-  // Optimista: aplica en memoria y cierra el selector
-  weeklyNutrition.meal_overrides=mo;
-  state.swapMeal=null;
-  render();
-  if(navigator.onLine===false){showToast('Sin conexión','red','El cambio no se ha guardado');return;}
-  try{
-    const {error}=await sb.from('weekly_nutrition').update({meal_overrides:mo}).eq('id',weeklyNutrition.id);
-    if(error){console.error('meal_overrides update:',error);showToast('No se pudo guardar el cambio','red','Inténtalo de nuevo');}
-  }catch(e){console.warn('selectMealVariant:',e);showToast('No se pudo guardar el cambio','red','Inténtalo de nuevo');}
-}
-
-// ─── FLUJO DE CONFIGURAR DIETA (banner + modal pantalla completa) ───
-
-function openNutritionConfig(){
-  if(!activeNutritionPlan||nutritionOptions.length===0){
-    showToast('Aún no tienes opciones de dieta','warn');
-    return;
-  }
-  // Copia del estado actual como borrador (para poder cancelar sin guardar)
-  const draft={};
-  DAY_KEYS.forEach(dk=>{draft[dk]=weeklyNutrition?.[dk+'_option']||null;});
-  // Empezamos en el día de hoy, en modo "ver" (sin cambiar nada)
-  let sd=(typeof todayIdx==='function')?todayIdx():0;
-  if(sd<0||sd>6)sd=0;
-  nutritionConfig={open:true, step:1, draft, selDay:sd, changeMode:false};
-  document.body.style.overflow='hidden';
-  renderNutritionConfigModal();
-}
-
-function closeNutritionConfig(){
-  nutritionConfig={open:false, step:1, draft:null, selDay:0, changeMode:false};
-  document.body.style.overflow='';
-  const el=document.getElementById('nutrition-config-modal');
-  if(el)el.remove();
-  render();
-}
-
-function renderNutritionConfigModal(){
-  let el=document.getElementById('nutrition-config-modal');
-  if(!el){
-    el=document.createElement('div');
-    el.id='nutrition-config-modal';
-    el.style.cssText='position:fixed;inset:0;background:#fcf9f8;z-index:1000;display:flex;flex-direction:column;font-family:\'DM Sans\',sans-serif;';
-    document.body.appendChild(el);
-  }
-
-  if(nutritionConfig.step===1){
-    el.innerHTML=ncRenderStep1();
-  } else if(nutritionConfig.step===2){
-    el.innerHTML=ncRenderStep2();
-  }
-}
-
-function ncRenderStep1(){
-  const draft=nutritionConfig.draft;
-  const selDay=(nutritionConfig.selDay==null?0:nutritionConfig.selDay);
-  const changeMode=!!nutritionConfig.changeMode;
-  const selDk=DAY_KEYS[selDay];
-  const selAssigned=draft[selDk]||null;            // opción asignada al día elegido
-  const showChips=changeMode||!selAssigned;        // mostrar burbujas de opción
-  const SHORT_DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const totalsFor=(opt)=>{
-    if(!opt||!opt.meals)return {kcal:0,ch:0,g:0,p:0};
-    let kcal=0,ch=0,g=0,p=0;
-    Object.values(opt.meals).forEach(m=>(m.items||[]).forEach(i=>{kcal+=(i.kcal||0);ch+=(i.ch||0);g+=(i.g||0);p+=(i.p||0);}));
-    return {kcal,ch,g,p};
-  };
-  const checkSvg='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left:3px;"><polyline points="20 6 9 17 4 12"/></svg>';
-
-  // ── Cabecera ──
-  const header='<div style="padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1.5px solid #eaeae6;flex-shrink:0;">'+
-    '<div>'+
-      '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;margin-bottom:2px;">Paso 1 de 2</div>'+
-      '<div style="font-family:\'DM Serif Display\',serif;font-size:22px;color:#111;letter-spacing:-.4px;line-height:1.1;">Distribuir tu dieta</div>'+
-    '</div>'+
-    '<button onclick="closeNutritionConfig()" style="width:36px;height:36px;border-radius:50%;background:#f0edec;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;">'+
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'+
-    '</button>'+
-  '</div>';
-
-  const assignedCount=DAY_KEYS.filter(dk=>draft[dk]).length;
-
-  // ── Sección "Asignar a": burbujas de día, cada una con su opción ──
-  const dayChips=DAY_KEYS.map((dk,i)=>{
-    const assigned=draft[dk];
-    const isSel=i===selDay;
-    const bg=isSel?'#006b2c':'#fff';
-    const col=isSel?'#fff':'#1c1b1b';
-    const bd=isSel?'#006b2c':'#eaeae6';
-    const badge=assigned
-      ? '<span style="margin-left:6px;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10px;font-weight:800;background:'+(isSel?'rgba(255,255,255,.25)':'#e8f5ec')+';color:'+(isSel?'#fff':'#006b2c')+';">'+assigned+'</span>'
-      : '<span style="margin-left:6px;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9px;font-size:12px;font-weight:800;background:'+(isSel?'rgba(255,255,255,.2)':'#f0edec')+';color:'+(isSel?'#fff':'#c4c4c0')+';">+</span>';
-    return '<button onclick="ncSelectDay('+i+')" style="flex-shrink:0;display:inline-flex;align-items:center;height:40px;padding:0 14px;border-radius:999px;background:'+bg+';color:'+col+';border:1.5px solid '+bd+';font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .18s;white-space:nowrap;box-shadow:'+(isSel?'0 4px 12px rgba(0,107,44,.22)':'0 1px 3px rgba(0,0,0,.04)')+';">'+
-      SHORT_DAYS[i]+badge+
-    '</button>';
-  }).join('');
-
-  const assignHint=showChips
-    ? 'Elige la opción para el <b style="color:#006b2c;">'+DAYS[selDay].toLowerCase()+'</b>.'
-    : 'Toca un día para ver su opción. Pulsa <b style="color:#006b2c;">Cambiar</b> para editarla.';
-
-  const assignSection='<section style="padding:18px 0 4px;">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;margin-bottom:10px;">'+
-      '<div style="font-family:\'DM Sans\',sans-serif;font-size:18px;font-weight:700;color:#1c1b1b;">Asignar a</div>'+
-      '<div style="font-size:13px;font-weight:600;color:#006b2c;">'+assignedCount+'/7 días</div>'+
-    '</div>'+
-    '<div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 20px 6px;">'+dayChips+'</div>'+
-    '<div style="padding:2px 20px 0;font-size:12px;color:#9aa39a;line-height:1.5;">'+assignHint+'</div>'+
-  '</section>';
-
-  // ── Sección "Opciones del Coach" ──
-  const cambiarBtn=selAssigned
-    ? '<button onclick="ncToggleChange()" style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:999px;background:'+(changeMode?'#006b2c':'#fff')+';color:'+(changeMode?'#fff':'#006b2c')+';border:1.5px solid '+(changeMode?'#006b2c':'rgba(0,107,44,.4)')+';font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;">'+
-        (changeMode
-          ? 'Listo'
-          : 'Cambiar<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>')+
-      '</button>'
-    : '';
-
-  const titleRow='<div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;margin-bottom:10px;">'+
-    '<div style="font-family:\'DM Sans\',sans-serif;font-size:18px;font-weight:700;color:#1c1b1b;">Opciones del Coach</div>'+
-    cambiarBtn+
-  '</div>';
-
-  let optsBody;
-  if(showChips){
-    const optChips=nutritionOptions.map(opt=>{
-      const isCur=selAssigned===opt.option_number;
-      const cnt=DAY_KEYS.filter(dk=>draft[dk]===opt.option_number).length;
-      const t=totalsFor(opt);
-      return '<button onclick="ncPickOptionForDay('+opt.option_number+')" style="flex-shrink:0;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-radius:999px;background:'+(isCur?'#006b2c':'#fff')+';color:'+(isCur?'#fff':'#1c1b1b')+';border:1.5px solid '+(isCur?'#006b2c':'#eaeae6')+';font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .18s;white-space:nowrap;box-shadow:'+(isCur?'0 4px 12px rgba(0,107,44,.22)':'0 1px 3px rgba(0,0,0,.04)')+';">'+
-        'Opción '+opt.option_number+
-        '<span style="font-size:11px;font-weight:700;color:'+(isCur?'rgba(255,255,255,.75)':'#9aa39a')+';">'+Math.round(t.kcal)+' kcal</span>'+
-        (cnt>0?'<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10px;font-weight:800;background:'+(isCur?'rgba(255,255,255,.22)':'#e8f5ec')+';color:'+(isCur?'#fff':'#006b2c')+';">'+cnt+'</span>':'')+
-        (isCur?checkSvg:'')+
-      '</button>';
-    }).join('');
-    const preview=selAssigned
-      ? ncRenderOptionMeals(selAssigned)
-      : '<div style="background:#fff;border:1.5px dashed #e0ded9;border-radius:18px;padding:28px 20px;text-align:center;color:#9aa39a;font-size:13px;line-height:1.5;">Elige arriba una opción para el '+DAYS[selDay].toLowerCase()+'.</div>';
-    optsBody='<div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 20px 8px;">'+optChips+'</div>'+
-      '<div style="padding:6px 16px 0;">'+preview+'</div>';
-  } else {
-    optsBody='<div style="padding:2px 16px 0;">'+ncRenderOptionMeals(selAssigned)+'</div>';
-  }
-
-  const optsSection='<section style="padding:14px 0 4px;">'+titleRow+optsBody+'</section>';
-
-  // ── Footer ──
-  const allAssigned=DAY_KEYS.every(dk=>draft[dk]);
-  const footer='<div style="padding:14px 16px calc(16px + env(safe-area-inset-bottom));background:rgba(252,249,248,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid #eaeae6;flex-shrink:0;">'+
-    '<button onclick="ncGoToStep2()" '+(allAssigned?'':'disabled ')+
-      'style="width:100%;height:52px;border-radius:15px;background:'+(allAssigned?'#006b2c':'#e0ded9')+';border:none;color:'+(allAssigned?'#fff':'#aaa')+';font-size:15px;font-weight:700;cursor:'+(allAssigned?'pointer':'not-allowed')+';font-family:\'DM Sans\',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:'+(allAssigned?'0 6px 16px rgba(0,107,44,.25)':'none')+';">'+
-      'Revisar y guardar'+
-      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'+
-    '</button>'+
-    (allAssigned?'':'<div style="font-size:11.5px;color:#bbb;text-align:center;margin-top:8px;">Asigna una opción a los 7 días para continuar</div>')+
-  '</div>';
-
-  return header+
-    '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:14px;">'+
-      assignSection+optsSection+
-    '</div>'+
-    footer;
-}
-
-// Renderiza las comidas de la opción abierta (tarjetas por tipo de comida, datos reales)
-function ncRenderOptionMeals(optNum){
-  const opt=nutritionOptions.find(o=>o.option_number===optNum);
-  if(!opt||!opt.meals)return '';
-  const macroCol=(lbl,val,unit,color)=>'<div style="text-align:center;">'+
-    '<div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#9aa39a;font-weight:700;margin-bottom:2px;">'+lbl+'</div>'+
-    '<div style="font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:800;color:'+color+';">'+val+unit+'</div>'+
-  '</div>';
-  const chev='<svg class="nc-meal-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bcbcb6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>';
-  const cards=DIET_MEAL_ORDER.map(mn=>{
-    const meals=opt.meals||{};
-    const realKey=Object.keys(meals).find(k=>k.toLowerCase()===mn);
-    const m=realKey?meals[realKey]:null;
-    if(!m||!(m.items||[]).length)return '';
-    const mc=mealStyle(mn);
-    const t=mealTotals(m);
-    const items=m.items.map(it=>it.name+(it.grams?' ('+it.grams+'g)':'')).join(' · ');
-    return '<div class="nc-meal-card" style="background:#fff;border:1px solid rgba(189,202,186,.3);border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.03);">'+
-      // Cabecera (siempre visible, plegable)
-      '<div onclick="ncToggleMeal(this)" style="display:flex;align-items:center;gap:11px;padding:14px;cursor:pointer;user-select:none;">'+
-        '<div style="width:42px;height:42px;border-radius:12px;background:'+mc.bg+';border:1.5px solid '+mc.border+';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:'+mc.color+';">'+mc.svg+'</div>'+
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="font-family:\'DM Sans\',sans-serif;font-size:15px;font-weight:700;color:#1c1b1b;text-transform:capitalize;line-height:1.1;">'+mn+'</div>'+
-          '<div style="font-size:12px;color:#9aa39a;font-weight:600;margin-top:3px;">'+Math.round(t.kcal)+' kcal · '+m.items.length+(m.items.length===1?' alimento':' alimentos')+'</div>'+
+// ── Reorganizar semana de dieta (drag & drop) — clon del patrón de Entreno,
+// pero opera sobre FIXED_DIET_PLAN vía diet_week_reorders (tabla separada de
+// week_reorders para no chocar con la reorganización del plan de entreno). ──
+function _esdRenderList(){
+  var list=document.getElementById('esd-list'); if(!list)return;
+  var draft=state.editSemanaDietaDraft||[];
+  var html='';
+  for(var i=0;i<7;i++){
+    var d=new Date(getDayDate(i)+'T12:00:00');
+    var dateLabel=DAYS[i]+', '+d.getDate()+' '+_ES_MES[d.getMonth()];
+    var token=draft[i];
+    var title='Menú de '+(DIET_DAY_LABEL[token]||token);
+    html+='<div class="es-card" data-slot="'+i+'" data-date="'+_esEsc(dateLabel)+'">'+
+        '<div class="es-card-main">'+
+          '<div class="es-date">'+_esEsc(dateLabel)+'</div>'+
+          '<div class="es-title">'+_esEsc(title)+'</div>'+
         '</div>'+
-        chev+
-      '</div>'+
-      // Cuerpo (colapsado por defecto)
-      '<div class="nc-meal-body" style="display:none;padding:0 14px 14px;">'+
-        '<div style="font-size:12.5px;color:#3e4a3d;opacity:.9;line-height:1.5;padding-bottom:10px;">'+items+'</div>'+
-        '<div style="display:flex;gap:18px;padding-top:10px;border-top:1px solid #f3f0ef;">'+
-          macroCol('Prot',Math.round(t.p),'g','#006b2c')+
-          macroCol('Carb',Math.round(t.ch),'g','#b45309')+
-          macroCol('Grasa',Math.round(t.g),'g','#7c3aed')+
-          macroCol('Kcal',Math.round(t.kcal),'','#1c1b1b')+
-        '</div>'+
-      '</div>'+
-    '</div>';
-  }).filter(Boolean).join('');
-  return '<div style="display:flex;flex-direction:column;gap:10px;">'+cards+'</div>';
-}
-
-// Pliega/despliega una tarjeta de comida (sin re-render, solo DOM)
-function ncToggleMeal(h){
-  const card=h.closest('.nc-meal-card');
-  if(!card)return;
-  const body=card.querySelector('.nc-meal-body');
-  const chevEl=h.querySelector('.nc-meal-chev');
-  if(!body)return;
-  const isOpen=body.style.display!=='none';
-  body.style.display=isOpen?'none':'block';
-  if(chevEl)chevEl.style.transform=isOpen?'rotate(0deg)':'rotate(180deg)';
-}
-
-// Selecciona un día (modo "ver": muestra su opción abajo, sin entrar a editar)
-function ncSelectDay(i){
-  nutritionConfig.selDay=i;
-  nutritionConfig.changeMode=false;
-  renderNutritionConfigModal();
-}
-
-// Entra/sale del modo "Cambiar" para el día seleccionado
-function ncToggleChange(){
-  nutritionConfig.changeMode=!nutritionConfig.changeMode;
-  renderNutritionConfigModal();
-}
-
-// Asigna la opción elegida al día seleccionado y vuelve al modo "ver"
-function ncPickOptionForDay(optNum){
-  const dk=DAY_KEYS[nutritionConfig.selDay==null?0:nutritionConfig.selDay];
-  nutritionConfig.draft[dk]=optNum;
-  nutritionConfig.changeMode=false;
-  renderNutritionConfigModal();
-}
-
-function ncRenderDayOptions(dayIdx, selectedOptNum){
-  const expandedOpt=nutritionConfig.expandedOpt;
-
-  return '<div style="padding:12px 14px;background:#fafaf8;">'+
-    '<div style="font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Elige una opción</div>'+
-    '<div style="display:flex;flex-direction:column;gap:8px;">'+
-      nutritionOptions.map(opt=>{
-        const isSel=selectedOptNum===opt.option_number;
-        const isExp=expandedOpt===opt.option_number;
-        let kcal=0;
-        if(opt.meals)Object.values(opt.meals).forEach(m=>(m.items||[]).forEach(i=>{kcal+=(i.kcal||0);}));
-        return '<div style="background:#fff;border-radius:12px;border:1.5px solid '+(isSel?'#006b2c':isExp?'#006b2c':'#eaeae6')+';overflow:hidden;">'+
-          // Cabecera opción
-          '<div style="padding:11px 13px;display:flex;align-items:center;gap:10px;">'+
-            '<button onclick="ncPickOption('+dayIdx+','+opt.option_number+')" style="flex:1;background:transparent;border:none;text-align:left;cursor:pointer;padding:0;font-family:\'DM Sans\',sans-serif;">'+
-              '<div style="display:flex;align-items:center;gap:8px;">'+
-                '<div style="width:18px;height:18px;border-radius:50%;border:2px solid '+(isSel?'#006b2c':'#ddd')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+(isSel?'#006b2c':'#fff')+';">'+
-                  (isSel?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':'')+
-                '</div>'+
-                '<div>'+
-                  '<div style="font-size:13px;font-weight:700;color:#111;">Opción '+opt.option_number+'</div>'+
-                  '<div style="font-size:11px;color:#bbb;font-weight:600;">'+Math.round(kcal)+' kcal</div>'+
-                '</div>'+
-              '</div>'+
-            '</button>'+
-            '<button onclick="ncToggleOptionDetails('+opt.option_number+')" style="background:'+(isExp?'#006b2c':'#f5f5f3')+';border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-size:11px;font-weight:700;color:'+(isExp?'#fff':'#888')+';display:flex;align-items:center;gap:4px;">'+
-              (isExp?'Ocultar':'Ver comidas')+
-              '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;transform:'+(isExp?'rotate(180deg)':'rotate(0deg)')+'"><polyline points="6 9 12 15 18 9"/></svg>'+
-            '</button>'+
-          '</div>'+
-          // Detalle de comidas (si expandido)
-          (isExp?
-            '<div style="padding:0 13px 12px;border-top:1px solid #f0f0ee;">'+
-              ['desayuno','comida','merienda','cena'].map(mn=>{
-                const meals=opt.meals||{};
-                const realKey=Object.keys(meals).find(k=>k.toLowerCase()===mn);
-                const m=realKey?meals[realKey]:null;
-                if(!m||!m.items?.length)return '';
-                const mc=mealStyle(mn);
-                const mKcal=m.items.reduce((a,i)=>a+(i.kcal||0),0);
-                return '<div style="margin-top:10px;background:'+mc.bg+';border:1.5px solid '+mc.border+';border-radius:10px;padding:10px 12px;">'+
-                  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'+
-                    '<div style="display:flex;align-items:center;gap:6px;">'+
-                      '<span style="color:'+mc.color+';display:inline-flex;width:15px;height:15px">'+mc.svg.replace('width="18" height="18"','width="15" height="15"').replace('width="17" height="17"','width="15" height="15"')+'</span>'+
-                      '<span style="font-size:12px;font-weight:700;color:#111;text-transform:capitalize;">'+mn+'</span>'+
-                    '</div>'+
-                    '<span style="font-size:11px;font-weight:700;color:#888;">'+Math.round(mKcal)+' kcal</span>'+
-                  '</div>'+
-                  '<div style="font-size:11.5px;color:#666;line-height:1.5;">'+
-                    m.items.map(it=>it.name+(it.grams?' ('+it.grams+'g)':'')).join(' · ')+
-                  '</div>'+
-                '</div>';
-              }).join('')+
-            '</div>':'')+
-        '</div>';
-      }).join('')+
-    '</div>'+
-  '</div>';
-}
-
-function ncToggleDay(i){
-  if(nutritionConfig.viewingDay===i){
-    nutritionConfig.viewingDay=null;
-    nutritionConfig.expandedOpt=null;
-  } else {
-    nutritionConfig.viewingDay=i;
-    nutritionConfig.expandedOpt=null;
-  }
-  renderNutritionConfigModal();
-}
-
-function ncToggleOptionDetails(optNum){
-  nutritionConfig.expandedOpt=nutritionConfig.expandedOpt===optNum?null:optNum;
-  renderNutritionConfigModal();
-}
-
-function ncPickOption(dayIdx, optNum){
-  const dk=DAY_KEYS[dayIdx];
-  nutritionConfig.draft[dk]=optNum;
-  // Cerrar el día tras elegir para guiar al siguiente
-  nutritionConfig.viewingDay=null;
-  nutritionConfig.expandedOpt=null;
-  renderNutritionConfigModal();
-}
-
-function ncGoToStep2(){
-  nutritionConfig.step=2;
-  renderNutritionConfigModal();
-}
-
-function ncGoToStep1(){
-  nutritionConfig.step=1;
-  renderNutritionConfigModal();
-}
-
-function ncRenderStep2(){
-  const SHORT2=['L','M','X','J','V','S','D'];
-  const draft=nutritionConfig.draft;
-  const totalsFor=(opt)=>{
-    if(!opt||!opt.meals)return {kcal:0,ch:0,g:0,p:0};
-    let kcal=0,ch=0,g=0,p=0;
-    Object.values(opt.meals).forEach(m=>(m.items||[]).forEach(i=>{kcal+=(i.kcal||0);ch+=(i.ch||0);g+=(i.g||0);p+=(i.p||0);}));
-    return {kcal,ch,g,p};
-  };
-
-  // Calcular media semanal
-  let weekKcal=0, days=0;
-  DAY_KEYS.forEach(dk=>{
-    const optNum=draft[dk];
-    if(optNum){
-      const opt=nutritionOptions.find(o=>o.option_number===optNum);
-      if(opt){const t=totalsFor(opt);weekKcal+=t.kcal;days++;}
-    }
-  });
-  const avgKcal=days?Math.round(weekKcal/days):0;
-
-  const header='<div style="padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1.5px solid #eaeae6;flex-shrink:0;">'+
-    '<div>'+
-      '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;margin-bottom:2px;">Paso 2 de 2 · Revisar</div>'+
-      '<div style="font-family:\'DM Serif Display\',serif;font-size:22px;color:#111;letter-spacing:-.4px;line-height:1.1;">Tu semana lista.</div>'+
-    '</div>'+
-    '<button onclick="closeNutritionConfig()" style="width:36px;height:36px;border-radius:50%;background:#f5f5f3;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;">'+
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'+
-    '</button>'+
-  '</div>';
-
-  // Card de media semanal
-  const summary='<div style="padding:18px 16px 12px;">'+
-    '<div style="background:linear-gradient(135deg,#00501f 0%,#006b2c 100%);border-radius:20px;padding:18px;position:relative;overflow:hidden;">'+
-      '<div style="position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(22,163,74,.15) 0%,transparent 70%);pointer-events:none;"></div>'+
-      '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px;position:relative;">Media semanal</div>'+
-      '<div style="display:flex;align-items:flex-end;gap:6px;position:relative;">'+
-        '<div style="font-family:\'DM Serif Display\',serif;font-size:48px;color:#fff;letter-spacing:-2px;line-height:1;">'+avgKcal.toLocaleString('es-ES')+'</div>'+
-        '<div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.5);margin-bottom:8px;">kcal/día</div>'+
-      '</div>'+
-    '</div>'+
-  '</div>';
-
-  // Lista resumen días
-  const daysList='<div style="padding:0 16px;display:flex;flex-direction:column;gap:6px;">'+
-    DAY_KEYS.map((dk,i)=>{
-      const optNum=draft[dk];
-      const opt=optNum?nutritionOptions.find(o=>o.option_number===optNum):null;
-      const tot=opt?totalsFor(opt):null;
-      return '<div style="background:#fff;border-radius:12px;border:1.5px solid #eaeae6;padding:11px 14px;display:flex;align-items:center;gap:11px;">'+
-        '<div style="width:30px;height:30px;border-radius:8px;background:#f0fdf4;border:1.5px solid rgba(22,163,74,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+
-          '<span style="font-size:11px;font-weight:800;color:#006b2c;">'+SHORT2[i]+'</span>'+
-        '</div>'+
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="font-size:12.5px;font-weight:700;color:#111;">'+DAYS[i]+'</div>'+
-          '<div style="font-size:11px;color:#bbb;font-weight:600;">'+(opt?'Opción '+optNum:'Sin asignar')+'</div>'+
-        '</div>'+
-        '<div style="text-align:right;">'+
-          '<div style="font-size:13px;font-weight:700;color:#111;">'+(tot?Math.round(tot.kcal):'—')+'</div>'+
-          '<div style="font-size:9px;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:.04em;">kcal</div>'+
-        '</div>'+
+        '<div class="es-grip" data-handle><span></span><span></span><span></span><span></span><span></span><span></span></div>'+
       '</div>';
-    }).join('')+
-  '</div>';
-
-  const footer='<div style="padding:14px 16px 18px;background:#fff;border-top:1.5px solid #eaeae6;flex-shrink:0;display:flex;gap:8px;">'+
-    '<button onclick="ncGoToStep1()" style="flex:1;height:48px;border-radius:14px;background:#f5f5f3;border:1.5px solid #eaeae6;color:#888;font-size:14px;font-weight:700;cursor:pointer;font-family:\'DM Sans\',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;">'+
-      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver'+
-    '</button>'+
-    '<button onclick="ncSaveAll()" style="flex:2;height:48px;border-radius:14px;background:#006b2c;border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:\'DM Sans\',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;">'+
-      'Guardar plan'+
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'+
-    '</button>'+
-  '</div>';
-
-  return header+
-    '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px;">'+
-      summary+daysList+
-    '</div>'+
-    footer;
-}
-
-async function ncSaveAll(){
-  if(!clientData||!activeNutritionPlan)return;
-  const draft=nutritionConfig.draft;
-  const wkStart=getWeekStart();
-  const payload={
-    client_id:clientData.id,
-    nutrition_plan_id:activeNutritionPlan.id,
-    week_start:wkStart,
-    configured_at:new Date().toISOString()
-  };
-  DAY_KEYS.forEach(dk=>{payload[dk+'_option']=draft[dk];});
-
-  // Botón ocupado
-  const btns=document.querySelectorAll('#nutrition-config-modal button');
-  btns.forEach(b=>{b.disabled=true;b.style.opacity='.6';});
-
-  let ok=false;
-  if(weeklyNutrition){
-    const upd={configured_at:payload.configured_at};
-    DAY_KEYS.forEach(dk=>{upd[dk+'_option']=payload[dk+'_option'];});
-    const {data,error}=await sb.from('weekly_nutrition').update(upd).eq('id',weeklyNutrition.id).select().single();
-    if(error){console.error('weekly_nutrition update error:',error);}
-    else if(data){weeklyNutrition=data;ok=true;}
-  } else {
-    const {data,error}=await sb.from('weekly_nutrition').insert(payload).select().single();
-    if(error){console.error('weekly_nutrition insert error:',error);}
-    else if(data){weeklyNutrition=data;ok=true;}
   }
-
-  if(!ok){
-    btns.forEach(b=>{b.disabled=false;b.style.opacity='1';});
-    showToast('No se pudo guardar. Inténtalo de nuevo.','err');
-    return;
-  }
-  showToast('Plan semanal guardado','green');
-  closeNutritionConfig();
+  list.innerHTML=html;
+  _esdAttachDrag();
 }
-
+var _esdD=null;
+function _esdAttachDrag(){
+  var list=document.getElementById('esd-list'); if(!list)return;
+  var body=document.getElementById('esd-body');
+  var cards=Array.prototype.slice.call(list.querySelectorAll('.es-card'));
+  var dateLabels=cards.map(function(c){return c.dataset.date;});
+  cards.forEach(function(card){
+    var grip=card.querySelector('[data-handle]');
+    if(!grip)return;
+    grip.onpointerdown=function(e){ _esdDragStart(e,card,cards,dateLabels,list,body); };
+  });
+}
+function _esdDragStart(e,card,cards,dateLabels,list,body){
+  if(e.button!=null && e.button!==0) return;
+  e.preventDefault();
+  var step=card.offsetHeight+14;
+  var fromIndex=cards.indexOf(card);
+  cards.forEach(function(c){c.style.transition='none';c.style.transform='translateY(0)';});
+  void list.offsetHeight;
+  cards.forEach(function(c){ if(c!==card) c.style.transition='transform .18s cubic-bezier(.2,.7,.3,1)'; });
+  card.classList.add('es-dragging');
+  _esdD={card:card,cards:cards,dateLabels:dateLabels,list:list,body:body,step:step,
+        fromIndex:fromIndex,curIndex:fromIndex,startY:e.clientY,scrollStart:body?body.scrollTop:0,
+        ptrTarget:e.currentTarget,ptrId:e.pointerId};
+  try{ e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+  window.addEventListener('pointermove',_esdDragMove,{passive:false});
+  window.addEventListener('pointerup',_esdDragEnd);
+  window.addEventListener('pointercancel',_esdDragEnd);
+}
+function _esdDragMove(e){
+  if(!_esdD)return;
+  if(e.cancelable)e.preventDefault();
+  var d=_esdD;
+  var scrollDelta=(d.body?d.body.scrollTop:0)-d.scrollStart;
+  var dy=(e.clientY-d.startY)+scrollDelta;
+  d.card.style.transform='translateY('+dy+'px)';
+  var newIndex=d.fromIndex+Math.round(dy/d.step);
+  if(newIndex<0)newIndex=0; if(newIndex>6)newIndex=6;
+  if(newIndex!==d.curIndex){
+    d.curIndex=newIndex;
+    var order=[0,1,2,3,4,5,6];
+    order.splice(d.fromIndex,1);
+    order.splice(newIndex,0,d.fromIndex);
+    d.cards.forEach(function(c,oi){
+      var vp=order.indexOf(oi);
+      var de=c.querySelector('.es-date'); var dl=d.dateLabels[vp];
+      if(de&&de.textContent!==dl)de.textContent=dl;
+      if(c===d.card)return;
+      c.style.transform='translateY('+((vp-oi)*d.step)+'px)';
+    });
+  }
+  _esdAutoScroll(e);
+}
+function _esdAutoScroll(e){
+  var d=_esdD; if(!d||!d.body)return;
+  var r=d.body.getBoundingClientRect(),margin=72,speed=0;
+  if(e.clientY<r.top+margin) speed=-Math.min(16,(r.top+margin-e.clientY)/4);
+  else if(e.clientY>r.bottom-margin) speed=Math.min(16,(e.clientY-(r.bottom-margin))/4);
+  if(speed) d.body.scrollTop+=speed;
+}
+function _esdDragEnd(){
+  if(!_esdD)return;
+  var d=_esdD; _esdD=null;
+  window.removeEventListener('pointermove',_esdDragMove);
+  window.removeEventListener('pointerup',_esdDragEnd);
+  window.removeEventListener('pointercancel',_esdDragEnd);
+  try{ d.ptrTarget&&d.ptrTarget.releasePointerCapture&&d.ptrTarget.releasePointerCapture(d.ptrId); }catch(_){}
+  var order=[0,1,2,3,4,5,6];
+  order.splice(d.fromIndex,1);
+  order.splice(d.curIndex,0,d.fromIndex);
+  var oldDraft=state.editSemanaDietaDraft||[];
+  state.editSemanaDietaDraft=order.map(function(oi){return oldDraft[oi];});
+  d.card.classList.remove('es-dragging');
+  _esdRenderList();
+}
+function openEditarSemanaDieta(){
+  var wk=weekKey();
+  state.editSemanaDietaDraft=getDietWeekPlan(wk);
+  state.editSemanaDietaOpen=true;
+  var av=document.getElementById('esd-avatar');
+  if(av){ var nm=(clientData&&clientData.name)||'H'; av.textContent=((nm.charAt(0))||'H').toUpperCase(); }
+  _esdRenderList();
+  var ov=document.getElementById('editsemanadieta-overlay');
+  if(ov){
+    var tb=document.querySelector('.tab-bar');
+    ov.style.bottom=(tb?tb.offsetHeight:0)+'px';
+    ov.style.display='flex';
+    var b=document.getElementById('esd-body'); if(b)b.scrollTop=0;
+    requestAnimationFrame(function(){ ov.classList.add('open'); });
+  }
+}
+function closeEditarSemanaDieta(){
+  state.editSemanaDietaOpen=false;
+  var ov=document.getElementById('editsemanadieta-overlay');
+  if(ov){ ov.classList.remove('open'); setTimeout(function(){ if(!state.editSemanaDietaOpen)ov.style.display='none'; },300); }
+}
+function saveEditSemanaDieta(){
+  var wk=weekKey();
+  if(Array.isArray(state.editSemanaDietaDraft)) saveDietWeekReorder(wk,state.editSemanaDietaDraft);
+  closeEditarSemanaDieta();
+  if(window.showToast) showToast('Semana actualizada ✓','green');
+  if(typeof render==='function') render();
+}
 
 // ── PROGRESO: revisiones del entrenador (fotos + peso + notas) ──
 const REV_PHOTOS_BUCKET='progress-photos';
@@ -3580,16 +3229,7 @@ async function loadRevisions(clientId){
       (rphotos||[]).forEach(rp=>{(byRev[rp.revision_id]=byRev[rp.revision_id]||[]).push(rp);});
       revisionsCache.forEach(r=>{r._photos=byRev[r.id]||[];});
     }
-    updateProgressNotif();
   }catch(e){console.warn('loadRevisions exception:',e);revisionsCache=[];}
-}
-
-// Enciende/apaga el puntito del tab Progreso según haya revisiones sin ver
-function updateProgressNotif(){
-  const dot=document.getElementById('progress-notif');
-  if(!dot)return;
-  const unseen=(revisionsCache||[]).some(r=>r.seen_by_client===false||r.seen_by_client==null);
-  dot.style.display=unseen?'block':'none';
 }
 
 // Marca todas las revisiones como vistas por el cliente
@@ -3597,7 +3237,6 @@ async function markRevisionsSeen(){
   const unseen=(revisionsCache||[]).filter(r=>r.seen_by_client===false||r.seen_by_client==null);
   if(!unseen.length)return;
   unseen.forEach(r=>{r.seen_by_client=true;});
-  updateProgressNotif();
   try{
     await sb.from('progress_photos').update({seen_by_client:true}).in('id',unseen.map(r=>r.id));
   }catch(e){console.warn('markRevisionsSeen:',e);}
@@ -3910,11 +3549,6 @@ function showWeightTip(el,w,dateLabel){
   requestAnimationFrame(()=>{tip.style.opacity='1';});
   clearTimeout(window._wtipT);
   window._wtipT=setTimeout(()=>{if(tip)tip.style.opacity='0';},2200);
-}
-
-function setWeightRange(r){
-  state.weightRange=r;
-  render();
 }
 
 // ── HISTORIAL (destino de "Ver historial" / pestaña Progreso) ──
@@ -4292,58 +3926,10 @@ function openWeightEvolution(){
 }
 function closeWeightEvolution(){const s=document.getElementById('we-screen');if(s)s.remove();}
 
-// ── Gráfica de peso de la pestaña Progreso (panel verde claro + línea verde oscuro, estilo mockup) ──
-function progresoWeightChart(weights){
-  const MA=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const monthAt=d=>{const p=String(d).slice(0,10).split('-');return MA[parseInt(p[1],10)-1]||'';};
-  const shortD=d=>{const m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];const p=String(d).slice(0,10).split('-');return p.length<3?d:(parseInt(p[2],10)+' '+(m[parseInt(p[1],10)-1]||''));};
-  if(!weights||weights.length<2){
-    return '<div style="background:linear-gradient(180deg,#e3eee6,#eef5f0);border-radius:16px;padding:38px 14px;text-align:center;color:#8fae9c;font-size:12.5px;line-height:1.55;">Registra tu peso unos días<br>y aquí verás tu evolución.</div>';
-  }
-  const W=340,H=152,padX=16,padTop=20,padBot=18;
-  const ws=weights.map(p=>p.w);
-  let min=Math.min.apply(null,ws),max=Math.max.apply(null,ws); if(min===max){min-=1;max+=1;}
-  const range=max-min,n=weights.length;
-  const X=i=>padX+(i/(n-1))*(W-2*padX);
-  const Y=w=>padTop+(1-(w-min)/range)*(H-padTop-padBot);
-  const pts=weights.map((p,i)=>({x:X(i),y:Y(p.w)}));
-  const line=_smoothPath(pts);
-  const area=line+' L'+pts[n-1].x.toFixed(1)+' '+(H-padBot)+' L'+pts[0].x.toFixed(1)+' '+(H-padBot)+' Z';
-  const DK='#15692e';
-  let dots='';
-  pts.forEach((pt,i)=>{dots+='<circle cx="'+pt.x.toFixed(1)+'" cy="'+pt.y.toFixed(1)+'" r="3.6" fill="'+DK+'"/>'+
-    '<circle cx="'+pt.x.toFixed(1)+'" cy="'+pt.y.toFixed(1)+'" r="13" fill="transparent" style="cursor:pointer" onclick="showWeightTip(this,\''+weights[i].w+'\',\''+shortD(weights[i].date)+'\')"/>';});
-  const svg='<div style="background:linear-gradient(180deg,#e3eee6,#eef5f0);border-radius:16px;padding:6px 4px;">'+
-    '<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;">'+
-      '<defs><linearGradient id="pwg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(21,105,46,.16)"/><stop offset="100%" stop-color="rgba(21,105,46,0)"/></linearGradient></defs>'+
-      '<path d="'+area+'" fill="url(#pwg)"/>'+
-      '<path d="'+line+'" fill="none" stroke="'+DK+'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'+
-      dots+
-    '</svg>'+
-  '</div>';
-  const mid=weights[Math.floor((n-1)/2)].date;
-  const lbl=v=>'<span style="font-size:12px;font-weight:600;color:#9a9a9a;">'+v+'</span>';
-  const labels='<div style="display:flex;justify-content:space-between;margin-top:12px;padding:0 6px;">'+lbl(monthAt(weights[0].date))+lbl(monthAt(mid))+lbl(monthAt(weights[n-1].date))+'</div>';
-  return svg+labels;
-}
-
-// ── PESTAÑA PROGRESO (diseño del mockup) — datos REALES, sin inventar ──
+// Progreso: lanzador a los 2 Excels compartidos con el entrenador (plan de
+// entrenamiento y registro semanal), que siguen siendo la fuente que usa el
+// coach para revisar — la app ya no duplica esa vista aquí.
 function renderProgreso(){
-  const MES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const revs=(revisionsCache||[]).slice();
-
-  const allW=(weightHistory&&weightHistory.length)?weightHistory.slice()
-    : Object.values(metricsCache||{}).filter(m=>m&&m.weight_kg!=null)
-        .map(m=>({date:String(m.date).slice(0,10),w:parseFloat(m.weight_kg)}))
-        .filter(p=>!isNaN(p.w)).sort((a,b)=>a.date.localeCompare(b.date));
-  const wRange=state.weightRange||'3m';
-  const cutoffDays=wRange==='6m'?180:wRange==='3m'?90:null;
-  let chartW=allW;
-  if(cutoffDays!=null){const c=new Date();c.setHours(0,0,0,0);c.setDate(c.getDate()-cutoffDays);const cs=c.toISOString().slice(0,10);chartW=allW.filter(p=>p.date>=cs);}
-  const pesoActual=allW.length?allW[allW.length-1].w:null;
-  const deltaTotal=(allW.length>=2)?+(allW[allW.length-1].w-allW[0].w).toFixed(1):null;
-
-  // ── Cabecera ──
   const bell='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
   const cal='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
   const header='<div style="padding:calc(20px + env(safe-area-inset-top)) 20px 12px;display:flex;align-items:center;justify-content:space-between;">'+
@@ -4359,207 +3945,29 @@ function renderProgreso(){
     '</div>'+
   '</div>';
 
-  // ── Tarjetas: Peso actual / Variación total (número en sans-serif negrita, como el mockup) ──
-  const kg='<span style="font-size:15px;color:#bbb;font-weight:500;letter-spacing:0;"> kg</span>';
-  const statCard=(label,valHtml)=>'<div style="flex:1;background:#fff;border:1.5px solid #f0efec;border-radius:20px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.04);">'+
-    '<div style="font-size:14px;color:#5b5b56;font-weight:500;margin-bottom:8px;">'+label+'</div>'+
-    '<div style="font-family:\'DM Sans\',sans-serif;font-size:32px;font-weight:800;color:#16a34a;letter-spacing:-1px;line-height:1;">'+valHtml+'</div>'+
-  '</div>';
-  const pesoVal=pesoActual!=null?(pesoActual+kg):'<span style="color:#ccc;">—</span>';
-  const varVal=deltaTotal!=null?(((deltaTotal>0?'+':'')+deltaTotal)+kg):'<span style="color:#ccc;">—</span>';
-  const stats='<div style="display:flex;gap:12px;padding:4px 16px 16px;">'+statCard('Peso actual',pesoVal)+statCard('Variación total',varVal)+'</div>';
-
-  // ── Evolución de peso ──
-  const rangeLbl={'3m':'Últimos 3 meses','6m':'Últimos 6 meses','hist':'Histórico'}[wRange];
-  const nextRange={'3m':'6m','6m':'hist','hist':'3m'}[wRange];
-  const evolBtn=(label,icon,onclick)=>'<button onclick="'+onclick+'" style="width:100%;height:54px;border-radius:14px;background:#fff;border:1.5px solid rgba(21,128,61,.5);color:#15803d;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin-top:11px;">'+label+icon+'</button>';
-  const icTrend='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>';
-  const icDumb='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg>';
-  const evolCard='<div style="margin:0 16px 16px;background:#fff;border:1.5px solid #f0efec;border-radius:24px;padding:20px 18px 18px;box-shadow:0 1px 3px rgba(0,0,0,.04);">'+
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;">'+
-      '<div style="font-family:\'DM Sans\',sans-serif;font-size:23px;font-weight:600;color:#1c1b1b;letter-spacing:-.4px;line-height:1.15;max-width:58%;">Evolución de peso</div>'+
-      '<button onclick="setWeightRange(\''+nextRange+'\')" style="flex-shrink:0;background:#ededea;border:none;border-radius:16px;padding:9px 14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;font-weight:600;color:#6b6b66;cursor:pointer;line-height:1.25;text-align:center;">'+rangeLbl+'</button>'+
+  const icPlan='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16M18 4v16"/><rect x="2" y="8" width="4" height="8" rx="1"/><rect x="18" y="8" width="4" height="8" rx="1"/><line x1="6" y1="12" x2="18" y2="12"/></svg>';
+  const icSheet='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></svg>';
+  const chev='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>';
+  const linkCard=(icon,title,sub,url)=>'<div onclick="window.open(\''+url+'\',\'_blank\')" style="display:flex;align-items:center;gap:16px;background:#16893f;border-radius:22px;padding:20px 20px;margin:0 16px 16px;box-shadow:0 8px 20px rgba(22,137,63,.22);cursor:pointer;">'+
+    '<div style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+icon+'</div>'+
+    '<div style="flex:1;min-width:0;">'+
+      '<div style="font-family:\'DM Sans\',sans-serif;font-size:18px;font-weight:800;color:#fff;line-height:1.2;">'+title+'</div>'+
+      '<div style="font-size:13px;color:rgba(255,255,255,.85);margin-top:3px;">'+sub+'</div>'+
     '</div>'+
-    progresoWeightChart(chartW)+
-    evolBtn('Ver evolución de peso',icTrend,'openWeightHistory()')+
-    evolBtn('Ver evolución de fuerza',icDumb,'openWorkoutLog()')+
+    chev+
   '</div>';
 
-  // ── Nota del Coach (última nota de revisión; si no hay, estado vacío en su sitio) ──
-  const noteRev=revs.find(r=>r.notes&&String(r.notes).trim());
-  const coachNote=noteRev
-    ? '<div style="margin:4px 16px 24px;background:#16893f;border-radius:22px;padding:20px 22px;box-shadow:0 8px 20px rgba(22,137,63,.22);position:relative;overflow:hidden;">'+
-        '<div style="position:absolute;top:14px;right:14px;width:64px;height:64px;border-radius:14px;background:rgba(255,255,255,.07);"></div>'+
-        '<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:8px;position:relative;z-index:1;">Nota del Coach</div>'+
-        '<div style="font-size:14px;color:rgba(255,255,255,.94);line-height:1.55;font-weight:600;position:relative;z-index:1;">"'+escHtml(noteRev.notes)+'"</div>'+
-      '</div>'
-    : '<div style="margin:4px 16px 24px;background:#16893f;border-radius:22px;padding:20px 22px;box-shadow:0 8px 20px rgba(22,137,63,.22);position:relative;overflow:hidden;">'+
-        '<div style="position:absolute;top:14px;right:14px;width:64px;height:64px;border-radius:14px;background:rgba(255,255,255,.07);"></div>'+
-        '<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:8px;position:relative;z-index:1;">Nota del Coach</div>'+
-        '<div style="font-size:13.5px;color:rgba(255,255,255,.9);line-height:1.55;font-weight:500;position:relative;z-index:1;">Aún no hay notas de tu entrenador. Cuando te deje feedback en una revisión, aparecerá aquí.</div>'+
-      '</div>';
-
-  // ── Revisiones anteriores (fotos ANTES/AHORA + fecha larga) ──
-  const chev='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9c9c4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>';
-  const camSvg='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
-  const photoCell=(path,tag)=>'<div style="position:relative;flex:1;min-width:0;height:100%;background:#e7e7e2;">'+
-    (path?'<img data-revphoto="'+escHtml(path)+'" style="width:100%;height:100%;object-fit:cover;display:block;" alt="">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#c4c4be;">'+camSvg+'</div>')+
-    (tag?'<div style="position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.72));padding:8px 0 3px;text-align:center;"><span style="font-size:7.5px;font-weight:800;color:#fff;letter-spacing:.08em;">'+tag+'</span></div>':'')+
+  const cards='<div style="padding:8px 0 4px;">'+
+    linkCard(icPlan,'Plan de entrenamiento','Abrir Excel compartido con tu coach','https://docs.google.com/spreadsheets/d/1X7rPspIJrTa5T53a5TDzcNc3YyCrE8WP_mjXdMwslkQ')+
+    linkCard(icSheet,'Registro semanal','Abrir Excel compartido con tu coach','https://docs.google.com/spreadsheets/d/1IOur7BIxkeErTHE3BL5uU_oSRUXQDJUFl30LqlrQRzc')+
   '</div>';
-  let revsList;
-  if(!revs.length){
-    revsList='<div style="margin:0 16px;background:#fff;border:1.5px dashed #e0e0d8;border-radius:18px;padding:30px 22px;text-align:center;">'+
-      '<div style="font-size:14px;font-weight:700;color:#111;margin-bottom:5px;">Aún no hay revisiones</div>'+
-      '<div style="font-size:12.5px;color:#bbb;line-height:1.5;">Cuando tu entrenador te haga una revisión, aquí verás tus fotos, peso y notas.</div>'+
-    '</div>';
-  } else {
-    revsList='<div style="padding:0 16px;">'+revs.map((rev,idx)=>{
-      const older=revs[idx+1]||null;
-      const ahoraP=(rev._photos&&rev._photos[0])?rev._photos[0].photo_path:'';
-      const antesP=(older&&older._photos&&older._photos[0])?older._photos[0].photo_path:'';
-      const p=String(rev.revision_date||'').slice(0,10).split('-');
-      const title=p.length>=2?('Revisión '+MES[parseInt(p[1],10)-1]):('Revisión semana '+(rev.revision_week!=null?rev.revision_week:'—'));
-      const dateLong=p.length>=3?(parseInt(p[2],10)+' de '+MES[parseInt(p[1],10)-1]+', '+p[0]):'';
-      let thumb;
-      if(ahoraP||antesP){
-        thumb='<div style="display:flex;gap:2px;width:104px;height:66px;border-radius:11px;overflow:hidden;flex-shrink:0;">'+
-          (antesP?photoCell(antesP,'ANTES'):'')+
-          photoCell(ahoraP, antesP?'AHORA':'')+
-        '</div>';
-      } else {
-        thumb='<div style="width:104px;height:66px;border-radius:11px;flex-shrink:0;background:#f0f0ec;display:flex;align-items:center;justify-content:center;color:#cfcfc8;">'+camSvg+'</div>';
-      }
-      return '<div onclick="openRevisionDetail(\''+rev.id+'\')" style="display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid #f0efec;border-radius:18px;padding:11px 13px;margin-bottom:12px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);">'+
-        thumb+
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="font-family:\'DM Sans\',sans-serif;font-size:17px;font-weight:700;color:#1c1b1b;line-height:1.1;">'+title+'</div>'+
-          '<div style="font-size:13px;color:#9a9a9a;font-weight:500;margin-top:3px;">'+dateLong+'</div>'+
-        '</div>'+
-        chev+
-      '</div>';
-    }).join('')+'</div>';
-  }
-  const revsSection='<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:600;color:#111;padding:6px 20px 0;margin-bottom:14px;">Revisiones anteriores</div>'+revsList;
+
+  const hint='<div style="margin:8px 16px 0;font-size:13px;color:#9a9a95;line-height:1.5;text-align:center;">Tu entrenador registra y revisa tu evolución en estos dos Excels. Se abren en una pestaña nueva.</div>';
 
   return '<div style="min-height:100%;background:#fbfaf9;box-sizing:border-box;padding-bottom:96px;">'+
-    header+stats+evolCard+coachNote+revsSection+
+    header+cards+hint+
   '</div>';
 }
-
-// Detalle de una revisión (fotos + peso + nota) a pantalla completa
-function openRevisionDetail(id){
-  const revs=(revisionsCache||[]);
-  const idx=revs.findIndex(r=>String(r.id)===String(id));
-  if(idx<0)return;
-  const rev=revs[idx];
-  const older=revs[idx+1]||null;   // revisión anterior (lista ordenada desc)
-  const MES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const parse=d=>{const p=String(d||'').slice(0,10).split('-');return p.length>=3?{d:parseInt(p[2],10),m:parseInt(p[1],10)-1,y:parseInt(p[0],10)}:null;};
-  const monYr=d=>{const o=parse(d);return o?(MES[o.m]+' '+o.y):'';};
-  const dateLong=d=>{const o=parse(d);return o?(o.d+' de '+MES[o.m]+', '+o.y):'';};
-  const headTitle=(()=>{const o=parse(rev.revision_date);return o?('Revisión '+MES[o.m]):('Revisión semana '+(rev.revision_week!=null?rev.revision_week:'—'));})();
-  const bodyTitle=(()=>{const o=parse(rev.revision_date);return o?('Revisión '+MES[o.m]+' '+o.y):headTitle;})();
-
-  const thisPhoto=(rev._photos&&rev._photos[0])?rev._photos[0].photo_path:'';
-  const olderPhoto=(older&&older._photos&&older._photos[0])?older._photos[0].photo_path:'';
-  const thisW=rev.weight_kg!=null?rev.weight_kg:null;
-  const olderW=(older&&older.weight_kg!=null)?older.weight_kg:null;
-  const pesoDelta=(thisW!=null&&olderW!=null)?+(thisW-olderW).toFixed(1):null;
-
-  // Coach
-  const coachName=(typeof coachData!=='undefined'&&coachData&&coachData.name)?coachData.name:'Tu entrenador';
-  const coachInit=(coachName||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
-
-  const camSvg='<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
-
-  // Cabecera
-  const avatarHtml='<div style="width:38px;height:38px;border-radius:50%;background:#f0fdf4;border:1.5px solid rgba(22,163,74,.25);display:flex;align-items:center;justify-content:center;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:700;color:#16a34a;flex-shrink:0;">'+coachInit+'</div>';
-  let html='<div style="padding:calc(16px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fbfaf9;border-bottom:1px solid #eee;">'+
-    '<div style="display:flex;align-items:center;gap:12px;min-width:0;">'+
-      '<div onclick="closeRevisionDetail()" style="cursor:pointer;display:flex;color:#16a34a;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></div>'+
-      '<div style="font-family:\'DM Serif Display\',serif;font-size:22px;color:#111;letter-spacing:-.3px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+headTitle+'</div>'+
-    '</div>'+
-    avatarHtml+
-  '</div>';
-
-  html+='<div style="padding:20px 18px 40px;">';
-
-  // Overline + título + fecha
-  html+='<div style="font-size:12px;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Histórico de progreso</div>'+
-    '<div style="font-family:\'DM Sans\',sans-serif;font-size:18px;font-weight:700;color:#1c1b1b;margin-bottom:8px;">'+bodyTitle+'</div>'+
-    '<div style="display:flex;align-items:center;gap:8px;color:#6b6b66;font-size:14px;margin-bottom:18px;">'+
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
-      (dateLong(rev.revision_date)||'—')+
-    '</div>';
-
-  // Carrusel de fotos (Antes / Después). 64% para que asome la siguiente y se deslice.
-  const cardBasis='64%';
-  const photoCard=(photo,tag,sub,weight,isAfter)=>{
-    const barBg=isAfter?'linear-gradient(transparent,rgba(21,128,61,.96))':'linear-gradient(transparent,rgba(255,255,255,.96))';
-    const tagCol=isAfter?'#fff':'#16a34a';
-    const subCol=isAfter?'rgba(255,255,255,.85)':'#8a8a85';
-    const pill=weight!=null?'<div style="background:'+(isAfter?'rgba(255,255,255,.92)':'#fff')+';border-radius:999px;padding:7px 14px;font-family:\'DM Sans\',sans-serif;font-weight:700;font-size:14px;color:#1c1b1b;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap;">'+weight+'kg</div>':'';
-    const img=photo
-      ? '<img data-revphoto="'+escHtml(photo)+'" style="width:100%;height:100%;object-fit:cover;display:block;" alt="">'
-      : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#c4c4be;background:#e7e7e2;">'+camSvg+'</div>';
-    return '<div style="flex:0 0 '+cardBasis+';scroll-snap-align:start;position:relative;border-radius:20px;overflow:hidden;aspect-ratio:4/5;background:#222;'+(isAfter?'box-shadow:0 0 0 3px #16a34a;':'')+'">'+
-      img+
-      '<div style="position:absolute;left:0;right:0;bottom:0;background:'+barBg+';padding:30px 16px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;">'+
-        '<div style="min-width:0;"><div style="font-family:\'DM Sans\',sans-serif;font-size:18px;font-weight:800;color:'+tagCol+';line-height:1.05;">'+tag+'</div>'+
-          '<div style="font-size:12px;font-weight:600;color:'+subCol+';margin-top:2px;">'+sub+'</div></div>'+
-        pill+
-      '</div>'+
-    '</div>';
-  };
-  let cards='';
-  if(older){ cards+=photoCard(olderPhoto,'Antes',monYr(older.revision_date),olderW,false); }
-  cards+=photoCard(thisPhoto,'Después',monYr(rev.revision_date),thisW,true);
-  html+='<div style="display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 0 6px;margin:0 -2px 22px;">'+cards+'</div>';
-
-  // Métricas de Cambio (peso real; grasa/masa magra sin fuente => —)
-  const metric=(val,lbl,real)=>'<div style="flex:1;text-align:center;">'+
-    '<div style="font-family:\'DM Sans\',sans-serif;font-size:22px;font-weight:800;color:'+(real?'#15803d':'#ccc')+';line-height:1;letter-spacing:-.4px;">'+val+'</div>'+
-    '<div style="font-size:9.5px;font-weight:800;color:#9a9a95;text-transform:uppercase;letter-spacing:.05em;margin-top:6px;line-height:1.25;">'+lbl+'</div>'+
-  '</div>';
-  const pesoStr=pesoDelta!=null?((pesoDelta>0?'+':'')+pesoDelta):'—';
-  html+='<div style="background:#fff;border:1.5px solid #f0efec;border-radius:20px;padding:18px 16px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:34px;">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">'+
-      '<div style="font-family:\'DM Sans\',sans-serif;font-size:16px;font-weight:700;color:#1c1b1b;">Métricas de Cambio</div>'+
-      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>'+
-    '</div>'+
-    '<div style="display:flex;gap:8px;">'+
-      metric(pesoStr,'Peso (kg)',pesoDelta!=null)+
-      metric('—','Grasa corporal',false)+
-      metric('—','Masa magra',false)+
-    '</div>'+
-  '</div>';
-
-  // Feedback del Coach
-  const hasNote=!!(rev.notes&&String(rev.notes).trim());
-  html+='<div style="position:relative;">'+
-    '<div style="display:inline-block;background:#16a34a;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:12.5px;font-weight:700;padding:7px 15px;border-radius:999px;box-shadow:0 4px 12px rgba(22,163,74,.28);position:relative;z-index:2;margin-left:6px;">Feedback del Coach</div>'+
-    '<div style="background:#f3f4f1;border-radius:18px;padding:26px 18px 18px;margin-top:-16px;">'+
-      (hasNote
-        ? '<div style="display:flex;gap:13px;align-items:flex-start;">'+
-            '<div style="width:38px;height:38px;border-radius:50%;background:#e2e8df;display:flex;align-items:center;justify-content:center;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:700;color:#3e4a3d;flex-shrink:0;">'+coachInit+'</div>'+
-            '<div style="flex:1;min-width:0;">'+
-              '<div style="font-size:15px;color:#3e4a3d;line-height:1.6;font-style:italic;white-space:pre-wrap;">"'+escHtml(rev.notes)+'"</div>'+
-              '<div style="font-size:14px;font-weight:700;color:#16a34a;margin-top:12px;">— '+escHtml(coachName)+'</div>'+
-            '</div>'+
-          '</div>'
-        : '<div style="font-size:14px;color:#9a9a95;line-height:1.55;padding:4px 2px;">Tu entrenador no dejó comentarios en esta revisión.</div>')+
-    '</div>'+
-  '</div>';
-
-  html+='</div>'; // cierra body
-
-  let s=document.getElementById('rev-detail-screen');
-  if(!s){s=document.createElement('div');s.id='rev-detail-screen';document.body.appendChild(s);}
-  s.style.cssText='position:fixed;inset:0;z-index:760;background:#fbfaf9;overflow-y:auto;-webkit-overflow-scrolling:touch;';
-  s.innerHTML='<div style="max-width:430px;margin:0 auto;min-height:100%;background:#fbfaf9;">'+html+'</div>';
-  try{hydrateRevisionPhotos();}catch(e){}
-}
-function closeRevisionDetail(){const s=document.getElementById('rev-detail-screen');if(s)s.remove();}
 
 function renderHistorial(){
   var tab=state.histTab||'resumen';
@@ -5113,215 +4521,6 @@ function _histPeso(DIASL,MESL){
   return _dayStrip(wk)+head+evol+medio;
 }
 
-function renderProgresoLegacy(){
-  const revs=revisionsCache||[];
-
-  // ── Datos para el resumen y la gráfica ──
-  const allW = (weightHistory&&weightHistory.length) ? weightHistory.slice()
-    : Object.values(metricsCache||{})
-        .filter(m=>m&&m.weight_kg!=null)
-        .map(m=>({date:String(m.date).slice(0,10),w:parseFloat(m.weight_kg)}))
-        .filter(p=>!isNaN(p.w))
-        .sort((a,b)=>a.date.localeCompare(b.date));
-  const wRange=state.weightRange||'3m';
-  const cutoffDays = wRange==='6m'?180 : wRange==='3m'?90 : null;
-  let chartW=allW;
-  if(cutoffDays!=null){
-    const c=new Date(); c.setHours(0,0,0,0); c.setDate(c.getDate()-cutoffDays);
-    const cs=c.toISOString().slice(0,10);
-    chartW=allW.filter(p=>p.date>=cs);
-  }
-  const revsW=revs.filter(r=>r.weight_kg!=null); // orden desc por semana
-  const pesoActual = allW.length ? allW[allW.length-1].w : (revsW.length ? parseFloat(revsW[0].weight_kg) : null);
-  // Referencia = primer pesaje desde que empezó el mesociclo actual
-  let baseW=null;
-  if(activeMeso&&activeMeso.start_date&&allW.length){
-    const startStr=String(activeMeso.start_date).slice(0,10);
-    const firstInMeso=allW.find(p=>p.date>=startStr);
-    if(firstInMeso){ baseW=firstInMeso.w; }
-    else { const before=allW.filter(p=>p.date<startStr); if(before.length)baseW=before[before.length-1].w; }
-  }
-  if(baseW==null) baseW = allW.length ? allW[0].w : (revsW.length ? parseFloat(revsW[revsW.length-1].weight_kg) : null);
-  const delta = (pesoActual!=null && baseW!=null) ? +(pesoActual-baseW).toFixed(1) : null;
-  let mesoWeek=null;
-  if(activeMeso&&activeMeso.start_date){
-    const start=new Date(String(activeMeso.start_date).slice(0,10)+'T00:00:00');
-    const today=new Date(); today.setHours(0,0,0,0);
-    const dd=Math.floor((today-start)/86400000);
-    if(!isNaN(dd)&&dd>=0)mesoWeek=Math.floor(dd/7)+1;
-  }
-
-  let html='<div style="min-height:100%;background:#f5f5f3;box-sizing:border-box;padding-bottom:90px">';
-  html+='<div style="padding:14px 16px 0">';
-
-  // Cabecera
-  html+='<div style="margin:8px 0 16px">'+
-    '<div style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Tu seguimiento</div>'+
-    '<div style="font-family:\'DM Serif Display\',serif;font-size:28px;color:#111;letter-spacing:-.5px;line-height:1.1">Tu <em style="color:#16a34a;font-style:italic">progreso.</em></div>'+
-  '</div>';
-
-  // 0) Racha de entreno
-  const streak=trainingStreakDays();
-  if(streak>=1){
-    html+='<div style="background:linear-gradient(135deg,#16a34a,#15803d);border-radius:16px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(22,163,74,.18)">'+
-      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>'+
-      '<div>'+
-        '<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:#fff;line-height:1">'+streak+' '+(streak===1?'día':'días')+'</div>'+
-        '<div style="font-size:11.5px;color:rgba(255,255,255,.85);font-weight:600;margin-top:2px">seguidos cumpliendo. ¡Sigue así!</div>'+
-      '</div>'+
-    '</div>';
-  } else {
-    html+='<div style="background:#fff;border:1.5px dashed #e0e0dc;border-radius:16px;padding:13px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">'+
-      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>'+
-      '<div style="font-size:12.5px;color:#999;font-weight:600;line-height:1.4">Cumple hoy (entrena o apunta tus datos) para empezar tu racha.</div>'+
-    '</div>';
-  }
-
-  // 0b) Vista de programa/bloque
-  html+=programBlockHtml();
-
-  // 0c) (El acceso a cheats se movió a la pantalla de Dieta)
-
-  // 1) Tarjeta resumen
-  const deltaArrowSvg = delta==null?'' : (delta<0
-    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'
-    : delta>0
-    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
-    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>');
-  const deltaTxt = delta==null?'—':('<span style="display:inline-flex;align-items:center;gap:3px">'+deltaArrowSvg+Math.abs(delta)+' kg</span>');
-  html+='<div style="background:#fff;border:1.5px solid #eaeae6;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
-    '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">'+
-      '<div>'+
-        '<div style="font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Peso actual</div>'+
-        '<div style="font-family:\'DM Serif Display\',serif;font-size:34px;color:#111;letter-spacing:-1px;line-height:1">'+(pesoActual!=null?pesoActual:'—')+(pesoActual!=null?'<span style="font-size:15px;color:#bbb;font-weight:400;letter-spacing:0"> kg</span>':'')+'</div>'+
-      '</div>'+
-      (delta!=null?'<div style="background:#f0fdf4;border:1.5px solid rgba(22,163,74,.2);border-radius:11px;padding:8px 12px;text-align:center;flex-shrink:0">'+
-        '<div style="font-size:15px;font-weight:800;color:#16a34a;line-height:1">'+deltaTxt+'</div>'+
-        '<div style="font-size:8.5px;font-weight:700;color:rgba(22,163,74,.7);text-transform:uppercase;letter-spacing:.04em;margin-top:2px">en este meso</div>'+
-      '</div>':'')+
-    '</div>'+
-    '<div style="display:flex;gap:18px;margin-top:14px;padding-top:13px;border-top:1px solid #f0f0ec">'+
-      '<div style="font-size:12px;color:#888;font-weight:600">'+(mesoWeek!=null?'Semana <b style="color:#111">'+mesoWeek+'</b> del plan':'Sin mesociclo activo')+'</div>'+
-      '<div style="font-size:12px;color:#888;font-weight:600">'+revs.length+' revisi'+(revs.length===1?'ón':'ones')+'</div>'+
-    '</div>'+
-  '</div>';
-
-  // 2) Gráfica de evolución del peso (con selector de rango)
-  const ranges=[['hist','Histórico'],['6m','6 meses'],['3m','3 meses']];
-  let segs='<div style="display:flex;gap:3px;background:#f0f0ec;border-radius:10px;padding:3px;margin-bottom:12px">';
-  ranges.forEach(function(rg){
-    const on=rg[0]===wRange;
-    segs+='<button onclick="setWeightRange(\''+rg[0]+'\')" style="flex:1;height:30px;border:none;border-radius:8px;background:'+(on?'#fff':'transparent')+';color:'+(on?'#111':'#999')+';font-size:11.5px;font-weight:'+(on?'700':'600')+';cursor:pointer;font-family:\'DM Sans\',sans-serif;box-shadow:'+(on?'0 1px 2px rgba(0,0,0,.08)':'none')+';transition:background .15s,color .15s,border-color .15s,transform .15s">'+rg[1]+'</button>';
-  });
-  segs+='</div>';
-  html+='<div style="background:#fff;border:1.5px solid #eaeae6;border-radius:18px;padding:16px 16px 12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
-    '<div style="font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Evolución del peso</div>'+
-    segs+
-    weightChartSVG(chartW)+
-    (chartW.length>=2?'<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font-size:10px;color:#bbb;font-weight:600">'+fmtRevDate(chartW[0].date)+'</span><span style="font-size:10px;color:#bbb;font-weight:600">'+fmtRevDate(chartW[chartW.length-1].date)+'</span></div>':'')+
-  '</div>';
-
-  // 2b) Resumen del mesociclo
-  const ms=mesoSummary();
-  const sumArrow = delta==null?'' : (delta<0
-    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'
-    : delta>0
-    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
-    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><line x1="5" y1="12" x2="19" y2="12"/></svg>');
-  const sumDelta = delta==null?'—':(sumArrow+Math.abs(delta)+' kg');
-  const sumItem=(val,lbl)=>'<div style="flex:1;text-align:center">'+
-    '<div style="font-family:\'DM Serif Display\',serif;font-size:24px;color:#111;line-height:1">'+val+'</div>'+
-    '<div style="font-size:9.5px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.04em;margin-top:4px">'+lbl+'</div>'+
-  '</div>';
-  html+='<div style="background:#fff;border:1.5px solid #eaeae6;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
-    '<div style="font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:13px">Tu mesociclo'+(ms.weekNum!=null?' · semana '+ms.weekNum:'')+'</div>'+
-    '<div style="display:flex;gap:6px">'+
-      sumItem(ms.sessions,'Entrenos')+
-      sumItem(ms.prs,'Ejercicios')+
-      sumItem(sumDelta,'Peso')+
-    '</div>'+
-  '</div>';
-
-  // 3) Antes vs ahora (si hay 2+ revisiones con foto)
-  const withPhotos=revs.filter(r=>(r._photos||[]).length>0);
-  if(withPhotos.length>=2){
-    const ahora=withPhotos[0];
-    const antes=withPhotos[withPhotos.length-1];
-    const colHtml=(rev,tag)=>{
-      const f=(rev._photos||[])[0]||{};
-      return '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:9px;font-weight:800;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;text-align:center">'+tag+'</div>'+
-        '<div style="position:relative;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#f0f0ec;cursor:pointer" onclick="openPhotoLightbox(this.querySelector(\'img\'))">'+
-          '<img data-revphoto="'+escHtml(f.photo_path||'')+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'+
-        '</div>'+
-        '<div style="font-size:10px;color:#888;font-weight:700;margin-top:5px;text-align:center">Semana '+(rev.revision_week!=null?rev.revision_week:'—')+'</div>'+
-      '</div>';
-    };
-    html+='<div style="background:#fff;border:1.5px solid #eaeae6;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
-      '<div style="font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Antes vs ahora</div>'+
-      '<div style="display:flex;gap:10px;align-items:flex-start">'+colHtml(antes,'Antes')+
-        '<div style="align-self:center;color:#d4d4cc;padding-top:14px;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>'+
-        colHtml(ahora,'Ahora')+'</div>'+
-    '</div>';
-  }
-
-  // Revisiones
-  html+='<div style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 10px">Revisiones</div>';
-
-  if(!revs.length){
-    html+='<div style="background:#fff;border:1.5px dashed #e0e0d8;border-radius:18px;padding:34px 22px;text-align:center">'+
-      '<div style="width:56px;height:56px;border-radius:16px;background:#f0f0ec;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:#ccc"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>'+
-      '<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px">Aún no hay revisiones</div>'+
-      '<div style="font-size:12.5px;color:#bbb;line-height:1.55">Cuando hagas una revisión con tu entrenador,<br>aquí verás tus fotos, tu peso y sus notas.</div>'+
-    '</div>';
-  } else {
-    revs.forEach(rev=>{
-      const fecha=fmtRevDate(rev.revision_date);
-      const fotos=rev._photos||[];
-      const hasNote=!!(rev.notes&&String(rev.notes).trim());
-      html+='<div style="background:#fff;border:1.5px solid #eaeae6;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)">';
-      // Cabecera de la revisión
-      html+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:'+((hasNote||fotos.length)?'13px':'0')+'">'+
-        '<div>'+
-          '<div style="font-family:\'DM Serif Display\',serif;font-size:19px;color:#111;letter-spacing:-.3px;line-height:1">Semana '+(rev.revision_week!=null?rev.revision_week:'—')+'</div>'+
-          (fecha?'<div style="font-size:11px;color:#bbb;font-weight:600;margin-top:3px">'+fecha+'</div>':'')+
-        '</div>'+
-        (rev.weight_kg!=null?'<div style="background:#f0fdf4;border:1.5px solid rgba(22,163,74,.2);border-radius:12px;padding:7px 13px;text-align:center;flex-shrink:0">'+
-          '<div style="font-family:\'DM Serif Display\',serif;font-size:19px;color:#16a34a;line-height:1">'+rev.weight_kg+'</div>'+
-          '<div style="font-size:8px;font-weight:800;color:rgba(22,163,74,.7);text-transform:uppercase;letter-spacing:.06em;margin-top:1px">kg</div>'+
-        '</div>':'')+
-      '</div>';
-      // Nota del entrenador
-      if(hasNote){
-        html+='<div style="background:#f5f5f3;border-radius:12px;padding:11px 13px;margin-bottom:'+(fotos.length?'13px':'0')+'">'+
-          '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h4"/></svg><span style="font-size:9px;font-weight:800;color:#bbb;text-transform:uppercase;letter-spacing:.06em">Nota de tu entrenador</span></div>'+
-          '<div style="font-size:13px;color:#444;line-height:1.5;white-space:pre-wrap">'+escHtml(rev.notes)+'</div>'+
-        '</div>';
-      }
-      // Fotos
-      if(fotos.length){
-        html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
-        fotos.forEach(f=>{
-          html+='<div>'+
-            '<div style="position:relative;width:100%;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:#f0f0ec;cursor:pointer" onclick="openPhotoLightbox(this.querySelector(\'img\'))">'+
-              '<img data-revphoto="'+escHtml(f.photo_path||'')+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'+
-            '</div>'+
-            (f.label?'<div style="font-size:9px;color:#888;font-weight:600;margin-top:4px;text-align:center;line-height:1.25;word-break:break-word">'+escHtml(f.label)+'</div>':'')+
-          '</div>';
-        });
-        html+='</div>';
-      } else {
-        html+='<div style="font-size:12px;color:#ccc;text-align:center;padding:6px 0">Sin fotos en esta revisión todavía</div>';
-      }
-      html+='</div>';
-    });
-  }
-
-  html+='</div>'; // cierra el contenido con padding lateral
-
-  html+='</div>'; // cierra wrapper exterior
-  return html;
-}
 
 function renderCheats(){
   // Pantalla "Comida Trampa" (Disfrute Consciente) — diseño del mockup,
@@ -7186,7 +6385,8 @@ function _catAlimento(nombre){
 // sumando cantidades y multiplicando por los días elegidos.
 function _shoppingItems(){
   const dias = Math.max(1, Math.min(7, state.shoppingDays||3));
-  const opts = nutritionOptions||[];
+  // Cada día de FIXED_DIET_PLAN hace de "opción" (7 días = 7 menús reales de la semana).
+  const opts = DIET_DAY_TOKENS.map(t=>FIXED_DIET_PLAN[t]);
   if(!opts.length) return {dias, cats:{}};
   // Promedio por día: tomamos una opción "tipo" por día. Para simplificar y ser útil,
   // calculamos la media de cantidades por alimento entre las opciones, y multiplicamos por días.
@@ -8080,7 +7280,7 @@ function openRegPasos(){
         '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:6px">'+
           '<input id="reg-steps" type="number" inputmode="numeric" placeholder="0" value="'+(steps||'')+'" oninput="_regPasosUpd()" style="width:170px;background:transparent;border:none;outline:none;text-align:center;font-family:\'DM Sans\',sans-serif;font-weight:800;font-size:54px;letter-spacing:-2px;color:#1c1b1b">'+
           '<div style="font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:600;letter-spacing:.14em;color:#3e4a3d;text-transform:uppercase;margin-top:2px">Pasos hoy</div>'+
-          '<div onclick="_regClose(\'reg-pasos\');state.tab=\'progress\';state.histTab=\'pasos\';" style="margin-top:10px;display:flex;align-items:center;gap:4px;color:#006b2c;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Ver detalle <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#006b2c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>'+
+          '<div onclick="_regClose(\'reg-pasos\');state.histTab=\'pasos\';openHistorial();" style="margin-top:10px;display:flex;align-items:center;gap:4px;color:#006b2c;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Ver detalle <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#006b2c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>'+
         '</div>'+
       '</div>'+
       // Meta
@@ -8181,7 +7381,7 @@ function openRegPeso(){
           '<span style="font-family:\'DM Sans\',sans-serif;font-weight:700;font-size:26px;color:rgba(62,74,61,.6);margin-left:6px">kg</span>'+
         '</div>'+
         '<div id="reg-peso-pill" style="margin-top:12px;background:rgba(127,252,151,.25);padding:5px 14px;border-radius:99px;font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:600;color:#006b2c">'+_regPesoDiff(cur,prev)+'</div>'+
-        '<div onclick="_regClose(\'reg-peso\');state.tab=\'progress\';state.histTab=\'peso\';" style="margin-top:14px;display:flex;align-items:center;gap:4px;color:#006b2c;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Ver detalle <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#006b2c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>'+
+        '<div onclick="_regClose(\'reg-peso\');state.histTab=\'peso\';openHistorial();" style="margin-top:14px;display:flex;align-items:center;gap:4px;color:#006b2c;font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Ver detalle <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#006b2c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>'+
       '</div>'+
       // Ruler
       '<div style="position:relative;padding:0;overflow:hidden">'+
@@ -9015,36 +8215,24 @@ async function _promoteIfNeeded(clientId, table){
 async function promoteScheduledPlans(clientId){
   if(!clientId)return;
   await _promoteIfNeeded(clientId,'training_plans');
-  await _promoteIfNeeded(clientId,'nutrition_plans');
 }
 
-// Carga (si existe) el próximo plan programado con activation_date > hoy
-// para mostrar el banner "Tu plan cambia el [fecha]" en MyTracc.
+// Carga (si existe) el próximo plan de entreno programado con activation_date
+// > hoy para mostrar el banner "Tu plan cambia el [fecha]" en MyTracc.
+// La dieta es fija (FIXED_DIET_PLAN): ya no hay planes de nutrición programados.
 async function loadScheduledPlans(clientId){
   scheduledTrainingPlan=null;
-  scheduledNutritionPlan=null;
   if(!clientId)return;
   const hoyStr=new Date().toISOString().slice(0,10);
-  const [tRes,nRes]=await Promise.all([
-    sb.from('training_plans')
+  const tRes=await sb.from('training_plans')
       .select('id,activation_date')
       .eq('client_id',clientId)
       .eq('is_active',false)
       .gt('activation_date',hoyStr)
       .order('activation_date',{ascending:true})
       .limit(1)
-      .maybeSingle(),
-    sb.from('nutrition_plans')
-      .select('id,activation_date')
-      .eq('client_id',clientId)
-      .eq('is_active',false)
-      .gt('activation_date',hoyStr)
-      .order('activation_date',{ascending:true})
-      .limit(1)
-      .maybeSingle(),
-  ]);
+      .maybeSingle();
   scheduledTrainingPlan=tRes&&tRes.data||null;
-  scheduledNutritionPlan=nRes&&nRes.data||null;
 }
 
 // Formatea una fecha 'YYYY-MM-DD' a "15 jun" o "15 jun 2027" si no es este año.
@@ -9110,15 +8298,15 @@ async function initApp(user){
     await promoteScheduledPlans(client.id);
 
     // Cargar datos en paralelo
-    const [planRes,metricsRes,sessionsRes,cheatsRes,mesoRes,nutritionRes,adjustmentsRes,reordersRes,apptRes,dayNotesRes]=await Promise.all([
+    const [planRes,metricsRes,sessionsRes,cheatsRes,mesoRes,adjustmentsRes,reordersRes,dietReordersRes,apptRes,dayNotesRes]=await Promise.all([
       sb.from('training_plans').select('*').eq('client_id',client.id).eq('is_active',true).maybeSingle(),
       sb.from('daily_metrics').select('*').eq('client_id',client.id).gte('date',getWeekStart90()).order('date'),
       sb.from('workout_sessions').select('*,workout_sets(*)').eq('client_id',client.id).gte('session_date',getWeekStart90()).order('session_date'),
       sb.from('cheats').select('*').eq('client_id',client.id).order('date',{ascending:false}).limit(100),
       sb.from('mesocycles').select('*').eq('client_id',client.id).eq('is_active',true).maybeSingle(),
-      sb.from('nutrition_plans').select('*').eq('client_id',client.id).eq('is_active',true).maybeSingle(),
       sb.from('split_adjustments').select('*').eq('client_id',client.id).order('effective_date'),
       sb.from('week_reorders').select('*').eq('client_id',client.id),
+      sb.from('diet_week_reorders').select('*').eq('client_id',client.id),
       sb.from('appointments').select('*').eq('client_id',client.id).order('starts_at',{ascending:true}),
       sb.from('day_notes').select('*').eq('client_id',client.id).order('date',{ascending:true})
     ]);
@@ -9129,7 +8317,6 @@ async function initApp(user){
     activePlan=planRes.data||null;
     activeMeso=mesoRes.data||null;
     splitAdjustments=(adjustmentsRes&&adjustmentsRes.data)||[];
-    activeNutritionPlan=nutritionRes.data||null;
 
     // Cargar info de planes futuros (para el banner "tu plan cambia el ...")
     await loadScheduledPlans(client.id);
@@ -9145,40 +8332,11 @@ async function initApp(user){
     // y NO existe en Supabase, lo subimos una vez (no se pierde lo ya hecho).
     await migrateLocalReordersToSupabase();
 
-    // Cargar opciones de nutrición y asignación semanal
-    if(activeNutritionPlan){
-      const [optsRes,weeklyRes]=await Promise.all([
-        sb.from('nutrition_options').select('*').eq('nutrition_plan_id',activeNutritionPlan.id).order('option_number'),
-        sb.from('weekly_nutrition').select('*').eq('client_id',client.id).eq('week_start',getWeekStart()).maybeSingle()
-      ]);
-      nutritionOptions=optsRes.data||[];
-
-      // Detectar weekly_nutrition huérfano: la asignación semanal apunta a un
-      // plan distinto al activo (típicamente porque se promocionó un plan nuevo).
-      // En ese caso descartamos la asignación en memoria (la fila queda en BD
-      // como histórico) y avisamos al cliente con un banner para reconfigurar.
-      const weeklyRaw = weeklyRes && weeklyRes.data;
-      if (weeklyRaw && weeklyRaw.nutrition_plan_id && weeklyRaw.nutrition_plan_id !== activeNutritionPlan.id){
-        weeklyNutrition = null;
-        nutritionPlanChanged = true;
-      } else {
-        weeklyNutrition = weeklyRaw || null;
-        nutritionPlanChanged = false;
-      }
-      // Normalizar los alimentos: en Supabase los macros se llaman
-      // carbs/fat/protein, pero el resto del código de dieta usa ch/g/p.
-      // Añadimos los alias para que todo funcione sin tocar más código.
-      nutritionOptions.forEach(opt=>{
-        const meals=opt.meals||{};
-        Object.values(meals).forEach(m=>{
-          (m.items||[]).forEach(it=>{
-            if(it.ch==null) it.ch=it.carbs||0;
-            if(it.g==null)  it.g=it.fat||0;
-            if(it.p==null)  it.p=it.protein||0;
-          });
-        });
-      });
-    }
+    // Caché de reorganizaciones semanales de la dieta fija (FIXED_DIET_PLAN)
+    dietWeekReorders={};
+    ((dietReordersRes&&dietReordersRes.data)||[]).forEach(r=>{
+      if(r&&r.week_key&&Array.isArray(r.plan))dietWeekReorders[r.week_key]=r.plan;
+    });
 
     // Cargar plan de ejercicios dinámico desde client_plans
     await loadClientPlan(client.id);
@@ -9525,10 +8683,9 @@ async function loadNotifications(){
   const list=document.getElementById('notif-list');
   if(!clientData||!appUser){list.innerHTML='<div style="padding:40px 20px;text-align:center;font-size:13px;color:#bbb">Sin notificaciones</div>';return;}
   const ws=getWeekStart();
-  const [revsRes,plansRes,nplansRes,readsRes,wkSessRes]=await Promise.all([
+  const [revsRes,plansRes,readsRes,wkSessRes]=await Promise.all([
     sb.from('revision_notes').select('id,note,created_at').eq('client_id',clientData.id).order('created_at',{ascending:false}).limit(10),
     sb.from('training_plans').select('id,created_at').eq('client_id',clientData.id).order('created_at',{ascending:false}).limit(3),
-    sb.from('nutrition_plans').select('id,created_at').eq('client_id',clientData.id).order('created_at',{ascending:false}).limit(3),
     sb.from('notification_reads').select('ref_table,ref_id').eq('user_id',appUser.id),
     sb.from('workout_sessions').select('id,completed,session_date').eq('client_id',clientData.id).gte('session_date',ws),
   ]);
@@ -9566,14 +8723,6 @@ async function loadNotifications(){
       title:'Recordatorio de cita',sub:cuando+' tienes '+(online?'una cita online':'una cita presencial')+' ('+T.label.toLowerCase()+') a las '+apptFmtHora(d)+'.',
       onClickCode:`markRead('appointments','${a.id}');closeNotifPanel();openAgendaPanel();`});
   });
-  (nplansRes.data||[]).forEach(p=>{
-    notifs.push({id:p.id,table:'nutrition_plans',isRead:readSet.has('nutrition_plans:'+p.id),date:new Date(p.created_at),
-      iconBg:'#e5e4df',iconColor:'#6b6b66',
-      icon:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
-      title:'Plan de dieta actualizado',sub:'Se han ajustado tus macros y comidas.',
-      onClickCode:`markRead('nutrition_plans','${p.id}');closeNotifPanel();switchTab('diet');`});
-  });
-
   notifs.sort((a,b)=>b.date-a.date);
   _notifList=notifs;
   const unreadCount=notifs.filter(n=>!n.isRead).length;
@@ -9636,14 +8785,13 @@ function fmtNotifDate(date){
 }
 async function updateNotifBadge(){
   if(!clientData||!appUser)return;
-  const [revsRes,plansRes,nplansRes,readsRes]=await Promise.all([
+  const [revsRes,plansRes,readsRes]=await Promise.all([
     sb.from('revision_notes').select('id').eq('client_id',clientData.id),
     sb.from('training_plans').select('id').eq('client_id',clientData.id),
-    sb.from('nutrition_plans').select('id').eq('client_id',clientData.id),
     sb.from('notification_reads').select('ref_id').eq('user_id',appUser.id),
   ]);
   const readIds=new Set((readsRes.data||[]).map(r=>r.ref_id));
-  const allIds=[...(revsRes.data||[]),...(plansRes.data||[]),...(nplansRes.data||[])].map(r=>r.id);
+  const allIds=[...(revsRes.data||[]),...(plansRes.data||[])].map(r=>r.id);
   const unread=allIds.filter(id=>!readIds.has(id)).length;
   notifBadge=unread;
   updateNotifBadgeCount(unread);
