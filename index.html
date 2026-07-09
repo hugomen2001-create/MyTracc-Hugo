@@ -1429,6 +1429,24 @@ async function saveDayField(di, field, value){
   }
 }
 
+// Borra de golpe lo registrado un día (peso, pasos, sueño, actividad libre) por si
+// el cliente se equivocó de día y ya no puede corregirlo campo a campo (no hay
+// forma de vaciar un valor desde los paneles de registro individuales).
+async function resetDayMetrics(di){
+  if(!clientData)return;
+  const date=getDayDate(di);
+  const existing=metricsCache[date];
+  if(!existing||!existing.id){showToast&&showToast('Ese día no tiene nada registrado','red');return;}
+  const ok=confirm('¿Borrar todo lo registrado el '+date+' (peso, pasos, sueño y actividad)? Esta acción no se puede deshacer.');
+  if(!ok)return;
+  const {data,error}=await sb.from('daily_metrics').update({steps:null,weight_kg:null,sleep_hours:null,activity:null}).eq('id',existing.id).select().single();
+  if(error){console.error('resetDayMetrics error:',error);showToast&&showToast('Error al borrar','red','Comprueba tu conexión');return;}
+  metricsCache[date]=data;
+  rebuildGymData();
+  showToast&&showToast('Día restablecido','green');
+  render();
+}
+
 // weekKey ahora refleja la SEMANA VISTA (state.weekOffset). 0 = actual, -1 = pasada…
 function weekKey(){const d=new Date();d.setDate(d.getDate()+(state.weekOffset||0)*7);return getWeekKey(d);}
 // La semana real de "ahora" (para comparaciones tipo "Actual"), sin offset.
@@ -2225,6 +2243,10 @@ function renderHome(){
   '</div>';
   const metricGrid='<div style="padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;">'+pesoCard+pasosCard+suenoCard+caloriasCard+'</div>';
 
+  const resetDiaLink=(dd.peso||dd.pasos||dd.sueno||dd.entreno)?('<div style="padding:0 16px 14px;text-align:center;">'+
+    '<span onclick="resetDayMetrics('+di+')" style="cursor:pointer;color:#b91c1c;font-size:13px;font-weight:600;">Restablecer día (borra peso, pasos, sueño y actividad)</span>'+
+  '</div>'):'';
+
   // ── Ver historial → pestaña Progreso ──
   const verHistorial='<div style="padding:0 16px 26px;">'+
     '<button onclick="openHistorial()" style="width:100%;height:52px;border-radius:16px;background:#fff;border:1.5px solid #e0e0dc;cursor:pointer;color:#16a34a;font-size:15px;font-weight:700;font-family:\'DM Sans\',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg> Ver historial</button>'+
@@ -2260,6 +2282,7 @@ function renderHome(){
       circlesCard+
       actividadBlock+
       metricGrid+
+      resetDiaLink+
       verHistorial+
     '</div>'+
   '</div>';
