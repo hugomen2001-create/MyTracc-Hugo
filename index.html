@@ -5039,31 +5039,24 @@ async function saveSetV2(exO,si,descanso,totalSeries){
       if(data){sess=data;sess.workout_sets=[];sessionsCache[date]=sess;}
     }
     if(sess&&savedOk){
-      // Insert o update workout_set
+      // Insert o update workout_set vía upsert (restricción única en
+      // session_id+exercise_name+set_number) — antes se buscaba la fila
+      // existente en la caché local y se decidía insert vs update a mano,
+      // lo que duplicaba la fila si dos guardados llegaban antes de que la
+      // caché se hubiera actualizado (doble tap, guardado lento, etc.).
       const exName=(window.exNames&&window.exNames[exO])||'Ejercicio '+exO;
       if(!sess.workout_sets)sess.workout_sets=[];
-      // Buscar la fila existente por exercise_name + set_number (los campos que SÍ existen
-      // en workout_sets). Antes se buscaba por exercise_order, que no es columna de esta
-      // tabla → siempre era undefined → nunca encontraba y duplicaba la fila en cada guardado.
       const existing=sess.workout_sets.find(s=>s.exercise_name===exName&&s.set_number===si+1);
       const repsVal=parseInt(reps)||null;
       const kgVal=parseFloat(kg)||null;
-      if(existing&&existing.id){
-        // Ya existe en DB — actualizar (siempre se queda el último valor escrito)
-        const {error:updErr}=await sb.from('workout_sets').update({reps_done:repsVal,weight_kg:kgVal}).eq('id',existing.id);
-        if(updErr){console.error('workout_sets update error:',updErr);savedOk=false;}
-        else{existing.reps_done=repsVal;existing.weight_kg=kgVal;}
-      } else {
-        // No existe — insertar
-        const {data:newSet,error:insertErr}=await sb.from('workout_sets').insert({
-          session_id:sess.id,exercise_name:exName,
-          set_number:si+1,reps_done:repsVal,weight_kg:kgVal
-        }).select().single();
-        if(insertErr){console.error('workout_sets insert error:',insertErr);savedOk=false;}
-        if(newSet){
-          if(existing)Object.assign(existing,newSet);
-          else sess.workout_sets.push(newSet);
-        }
+      const {data:upsertedSet,error:upsertErr}=await sb.from('workout_sets')
+        .upsert({session_id:sess.id,exercise_name:exName,set_number:si+1,reps_done:repsVal,weight_kg:kgVal},
+                {onConflict:'session_id,exercise_name,set_number'})
+        .select().single();
+      if(upsertErr){console.error('workout_sets upsert error:',upsertErr);savedOk=false;}
+      if(upsertedSet){
+        if(existing)Object.assign(existing,upsertedSet);
+        else sess.workout_sets.push(upsertedSet);
       }
     } else if(!sess){
       savedOk=false;
