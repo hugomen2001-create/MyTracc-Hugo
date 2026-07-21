@@ -5016,9 +5016,12 @@ async function saveSetV2(exO,si,descanso,totalSeries){
   const kg=kgEl?kgEl.value:'';
   if(!state.sessionStartTime) state.sessionStartTime=Date.now();
 
-  // Save locally
+  // Save locally (el check verde se marca más abajo, solo si de verdad se
+  // guardó en Supabase — antes se marcaba aquí basándose solo en que reps/kg
+  // no estuvieran vacíos, así que un fallo de red dejaba el check en verde
+  // con la serie sin guardar de verdad, y esa celda salía vacía en el Excel).
   dd.sets[exO][si]={reps,kg};
-  dd.savedSets[exO][si]=!!(reps&&kg);
+  let savedOk=!!(reps&&kg);
 
   // Save to Supabase
   if(clientData){
@@ -5032,10 +5035,10 @@ async function saveSetV2(exO,si,descanso,totalSeries){
     let sess=sessionsCache[date];
     if(!sess){
       const {data,error:sessErr}=await sb.from('workout_sessions').insert({client_id:clientData.id,session_date:date,session_type:sessionType,completed:false}).select('*').single();
-      if(sessErr)console.error('workout_sessions insert error:',sessErr);
+      if(sessErr){console.error('workout_sessions insert error:',sessErr);savedOk=false;}
       if(data){sess=data;sess.workout_sets=[];sessionsCache[date]=sess;}
     }
-    if(sess){
+    if(sess&&savedOk){
       // Insert o update workout_set
       const exName=(window.exNames&&window.exNames[exO])||'Ejercicio '+exO;
       if(!sess.workout_sets)sess.workout_sets=[];
@@ -5047,22 +5050,28 @@ async function saveSetV2(exO,si,descanso,totalSeries){
       const kgVal=parseFloat(kg)||null;
       if(existing&&existing.id){
         // Ya existe en DB — actualizar (siempre se queda el último valor escrito)
-        await sb.from('workout_sets').update({reps_done:repsVal,weight_kg:kgVal}).eq('id',existing.id);
-        existing.reps_done=repsVal;existing.weight_kg=kgVal;
+        const {error:updErr}=await sb.from('workout_sets').update({reps_done:repsVal,weight_kg:kgVal}).eq('id',existing.id);
+        if(updErr){console.error('workout_sets update error:',updErr);savedOk=false;}
+        else{existing.reps_done=repsVal;existing.weight_kg=kgVal;}
       } else {
         // No existe — insertar
         const {data:newSet,error:insertErr}=await sb.from('workout_sets').insert({
           session_id:sess.id,exercise_name:exName,
           set_number:si+1,reps_done:repsVal,weight_kg:kgVal
         }).select().single();
-        if(insertErr){console.error('workout_sets insert error:',insertErr);showToast('Error al guardar','red','Comprueba tu conexión e inténtalo');}
+        if(insertErr){console.error('workout_sets insert error:',insertErr);savedOk=false;}
         if(newSet){
           if(existing)Object.assign(existing,newSet);
           else sess.workout_sets.push(newSet);
         }
       }
+    } else if(!sess){
+      savedOk=false;
     }
   }
+
+  dd.savedSets[exO][si]=savedOk;
+  if(!savedOk)showToast('No se ha guardado la serie','red','Comprueba tu conexión y vuelve a darle al check');
 
   // Render immediately to show the ✓ check
   const scrollEl=document.querySelector('#main-content [style*="overflow-y:auto"]');
