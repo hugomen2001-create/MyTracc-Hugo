@@ -471,6 +471,8 @@ button, [onclick]:not(input):not(textarea):not(select){
 @media (min-width:1100px){:root{--app-max:1024px}}
 @media (min-width:500px) and (min-height:500px){:root{--bubble:56px}}
 .app{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+/* Plegado en horizontal: sin margen lateral, la app a todo el ancho. */
+@media (max-height:499.98px) and (orientation:landscape){.app{padding-left:0;padding-right:0}}
 .app>.content{padding-bottom:calc(var(--bubble) + 22px + env(safe-area-inset-bottom))}
 .app>.tab-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));flex-direction:row;gap:14px;padding:0;border:none;background:none;z-index:5}
 .app>.tab-bar .tab-item{flex:0 0 auto;width:var(--bubble);height:var(--bubble);padding:0;justify-content:center;gap:0;border-radius:50%;background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);border:1px solid rgba(0,0,0,.05);box-shadow:0 8px 22px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06);transition:background .15s,box-shadow .15s,transform .15s}
