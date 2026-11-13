@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MyTracc">
 <title>MyTracc</title>
 <link rel="manifest" href="manifest.json">
@@ -461,32 +461,56 @@ button, [onclick]:not(input):not(textarea):not(select){
 }
 
 /* ── Pantalla adaptable (iPhone Duo plegado/desplegado, vertical/horizontal) ──
-   La app ocupa todo el ancho de la pantalla abierta. Las hojas que suben desde
-   abajo se quedan con un ancho cómodo en pantallas anchas. */
-:root{--app-max:100%;--sheet-max:100%;--dock-w:76px;--dock-col:calc(var(--dock-w) + 20px + env(safe-area-inset-right))}
+   La app ocupa todo el ancho de la pantalla. Las pestañas son burbujas sueltas:
+   - Plegado (menos de 500px de ancho o de alto): a la derecha, en columna.
+   - Abierto: abajo y centradas, flotando como el dock del Mac.
+   Las hojas que suben desde abajo se quedan con un ancho cómodo en pantallas anchas. */
+:root{--app-max:100%;--sheet-max:100%;--bubble:52px}
 @media (min-width:600px){:root{--sheet-max:560px}}
 @media (min-width:1100px){:root{--app-max:1024px}}
 .app{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
-/* Pantalla desplegada (vertical u horizontal): las pestañas pasan a un dock
-   flotante a la derecha, estilo Apple, y el contenido ocupa toda la altura. */
-@media (min-width:600px){
-  .app[style*="flex"]{display:grid !important}
-  .app{grid-template-columns:minmax(0,1fr) var(--dock-col);grid-template-rows:auto minmax(0,1fr);padding-right:0}
-  .app>.header{grid-column:1;grid-row:1}
-  .app>.content{grid-column:1;grid-row:2}
-  /* Cada pestaña es una burbuja suelta; la barra en sí no tiene fondo. */
-  .app>.tab-bar{grid-column:2;grid-row:1/3;align-self:center;justify-self:start;width:var(--dock-w);flex-direction:column;align-items:center;gap:14px;padding:0;border:none;background:none}
-  .app>.tab-bar .tab-item{flex:0 0 auto;width:58px;height:58px;padding:0;justify-content:center;gap:0;border-radius:50%;background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);border:1px solid rgba(0,0,0,.05);box-shadow:0 8px 22px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06);transition:background .15s,box-shadow .15s,transform .15s}
-  .app>.tab-bar .tab-item.active{background:#16a34a;box-shadow:0 8px 22px rgba(22,163,74,.35)}
-  .app>.tab-bar .tab-item.active .tab-icon-wrap svg{stroke:#fff}
-  .app>.tab-bar .tab-item>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  .app>.tab-bar .tab-dot{display:none}
-  .timer-mini{right:calc(var(--dock-col) + 4px)}
-  #export-home-fab{right:calc(var(--dock-col) + 8px) !important}
+.app>.tab-bar{gap:14px;padding:0;border:none;background:none}
+.app>.tab-bar .tab-item{flex:0 0 auto;width:var(--bubble);height:var(--bubble);padding:0;justify-content:center;gap:0;border-radius:50%;background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);border:1px solid rgba(0,0,0,.05);box-shadow:0 8px 22px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06);transition:background .15s,box-shadow .15s,transform .15s}
+.app>.tab-bar .tab-item.active{background:#16a34a;box-shadow:0 8px 22px rgba(22,163,74,.35)}
+.app>.tab-bar .tab-item.active .tab-icon-wrap svg{stroke:#fff}
+.app>.tab-bar .tab-item>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.app>.tab-bar .tab-dot{display:none}
+/* Plegado: columna de burbujas pegada al borde derecho del móvil; el
+   contenido usa todo el ancho y solo deja el hueco justo de las burbujas. */
+@media (max-width:499.98px),(max-height:499.98px){
+  :root{--bubble:48px}
+  .app>.content{padding-right:calc(var(--bubble) - 4px)}
+  .app>.tab-bar{position:absolute;right:calc(4px + env(safe-area-inset-right));top:50%;transform:translateY(-50%);flex-direction:column;align-items:center;gap:12px;z-index:5}
+  .timer-mini{right:calc(var(--bubble) + 12px);bottom:calc(18px + env(safe-area-inset-bottom))}
+  #export-home-fab{right:calc(var(--bubble) + 14px) !important;bottom:calc(24px + env(safe-area-inset-bottom)) !important}
 }
-@media (min-width:600px) and (orientation:landscape){
-  .timer-mini{bottom:calc(18px + env(safe-area-inset-bottom))}
-  #export-home-fab{bottom:calc(24px + env(safe-area-inset-bottom)) !important}
+/* Abierto: fila de burbujas abajo, centrada, por encima del contenido. */
+@media (min-width:500px) and (min-height:500px){
+  :root{--bubble:56px}
+  .app>.content{padding-bottom:calc(var(--bubble) + 24px + env(safe-area-inset-bottom))}
+  .app>.tab-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));flex-direction:row;z-index:5}
+}
+
+/* Franja del sistema (hora, batería). Con la barra de estado translúcida la
+   app puede dibujar en ella: se pinta negra para que se lea la hora (que el
+   iPhone pone en blanco) y, plegado, las burbujas van dentro de la franja
+   lateral. Las clases strip-l / strip-r las pone JS al medir los márgenes. */
+:root{--sa-t:env(safe-area-inset-top);--sa-r:env(safe-area-inset-right);--sa-l:env(safe-area-inset-left)}
+body::after{content:'';position:fixed;left:0;right:0;top:0;height:var(--sa-t);background:#111;z-index:99999;pointer-events:none}
+html.strip-r body,html.strip-l body{background:#111}
+html.strip-r .app,html.strip-l .app{left:var(--sa-l);right:var(--sa-r);padding-left:0;padding-right:0}
+html.strip-r .evol-panel,html.strip-r .detail-panel,html.strip-r .es-overlay,html.strip-r .reg-screen,html.strip-r #notif-panel,html.strip-r .metric-overlay,html.strip-r .timer-overlay,
+html.strip-r [style*="position:fixed"][style*="inset:0"],html.strip-r [style*="position: fixed"][style*="inset: 0"],
+html.strip-l .evol-panel,html.strip-l .detail-panel,html.strip-l .es-overlay,html.strip-l .reg-screen,html.strip-l #notif-panel,html.strip-l .metric-overlay,html.strip-l .timer-overlay,
+html.strip-l [style*="position:fixed"][style*="inset:0"],html.strip-l [style*="position: fixed"][style*="inset: 0"]{left:var(--sa-l) !important;right:var(--sa-r) !important}
+@media (max-width:499.98px),(max-height:499.98px){
+  html.strip-r .app>.content,html.strip-l .app>.content{padding-right:0}
+  html.strip-r .app>.tab-bar{position:fixed;right:calc((var(--sa-r) - var(--bubble)) / 2)}
+  html.strip-l .app>.tab-bar{position:fixed;right:auto;left:calc((var(--sa-l) - var(--bubble)) / 2)}
+  html.strip-r .app>.tab-bar .tab-item:not(.active),html.strip-l .app>.tab-bar .tab-item:not(.active){background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.14);box-shadow:none}
+  html.strip-r .app>.tab-bar .tab-item:not(.active) .tab-icon-wrap svg,html.strip-l .app>.tab-bar .tab-item:not(.active) .tab-icon-wrap svg{stroke:#d4d4d0}
+  html.strip-r .timer-mini{right:calc(var(--sa-r) + 12px)}
+  html.strip-r #export-home-fab{right:calc(var(--sa-r) + 14px) !important}
 }
 </style>
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -2091,6 +2115,20 @@ async function updateWakeLock(){
 }
 document.addEventListener('visibilitychange',updateWakeLock);
 
+// Mide los márgenes que reserva el sistema (franja de la hora en el lateral
+// del iPhone Duo plegado) y marca en qué lado está, para el CSS de arriba.
+function updateSafeAreaSides(){
+  let pr=document.getElementById('sa-probe');
+  if(!pr){pr=document.createElement('div');pr.id='sa-probe';pr.style.cssText='position:fixed;visibility:hidden;pointer-events:none;padding-left:var(--sa-l);padding-right:var(--sa-r)';document.body.appendChild(pr);}
+  const cs=getComputedStyle(pr);
+  document.documentElement.classList.toggle('strip-r',parseFloat(cs.paddingRight)>20);
+  document.documentElement.classList.toggle('strip-l',parseFloat(cs.paddingLeft)>20);
+}
+window.addEventListener('resize',updateSafeAreaSides);
+window.addEventListener('orientationchange',()=>setTimeout(updateSafeAreaSides,300));
+document.addEventListener('DOMContentLoaded',updateSafeAreaSides);
+if(document.readyState!=='loading')updateSafeAreaSides();
+
 function copyLastSession(exO){
   // Usa la MISMA fuente que el placeholder "ant." (ex.p), que se calcula
   // casando por NOMBRE de ejercicio, no por orden. Así nunca trae datos de otro.
@@ -2159,6 +2197,10 @@ function render(){
   // (pantalla desplegada) no se vea de otro color.
   const _tabBg=c.firstElementChild?getComputedStyle(c.firstElementChild).backgroundColor:'';
   document.getElementById('main-app').style.background=(_tabBg&&_tabBg!=='rgba(0, 0, 0, 0)')?_tabBg:'';
+  c.style.background=(_tabBg&&_tabBg!=='rgba(0, 0, 0, 0)')?_tabBg:'';
+  // La franja que reserva el iPhone para la hora y la cobertura toma el mismo color.
+  const _themeMeta=document.querySelector('meta[name="theme-color"]');
+  if(_themeMeta&&_tabBg&&_tabBg!=='rgba(0, 0, 0, 0)')_themeMeta.setAttribute('content',_tabBg);
   // Si el historial está abierto como overlay (desde Inicio), mantenerlo sincronizado
   var _hs=document.getElementById('hist-screen');
   if(_hs){ var _k=_hs.scrollTop; _hs.innerHTML=renderHistorial(); try{hydrateRevisionPhotos();markRevisionsSeen();}catch(e){} _hs.scrollTop=_k; }
