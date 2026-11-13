@@ -40,7 +40,7 @@ body{font-family:var(--font);color:var(--text)}
 ::-webkit-scrollbar{display:none}
 *{scrollbar-width:none;-ms-overflow-style:none}
 
-.app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:430px;margin:0 auto;overflow:hidden;background:#f5f5f3}
+.app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:var(--app-max);margin:0 auto;overflow:hidden;background:#f5f5f3}
 
 /* HEADER */
 .header{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 20px 12px;padding-top:calc(14px + env(safe-area-inset-top));transition:background .2s,color .2s,border-color .2s,transform .2s}
@@ -127,7 +127,7 @@ input[type=number]{-moz-appearance:textfield}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.metric-sheet{background:#f5f5f3;border-radius:28px 28px 0 0;width:100%;max-width:430px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.metric-sheet{background:#f5f5f3;border-radius:28px 28px 0 0;width:100%;max-width:var(--sheet-max);max-height:92dvh;display:flex;flex-direction:column;overflow:hidden}
 .metric-handle{width:36px;height:4px;background:#ddd;border-radius:2px;margin:12px auto 0;flex-shrink:0}
 .metric-header{padding:12px 16px 10px;display:flex;align-items:center;justify-content:center;background:#f5f5f3;border-bottom:1.5px solid #eaeae6;flex-shrink:0}
 .metric-title{font-size:15px;font-weight:700;color:#111;letter-spacing:-0.3px;text-align:center}
@@ -273,7 +273,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 /* TOAST */
 .toast{position:fixed;top:calc(72px + env(safe-area-inset-top));left:16px;right:16px;z-index:900;pointer-events:none;transition:opacity 0.25s ease,transform 0.35s cubic-bezier(0.34,1.56,0.64,1);opacity:0;transform:translateY(-12px)}
 .toast.show{opacity:1;transform:translateY(0)}
-.toast-inner{background:#111;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.22);max-width:430px;margin:0 auto}
+.toast-inner{background:#111;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.22);max-width:var(--sheet-max);margin:0 auto}
 .toast-icon{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .toast-text{flex:1;min-width:0}
 .toast-title{font-size:13px;font-weight:700;color:#fff;line-height:1.2}
@@ -287,7 +287,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .timer-mini.show{display:flex}
 .timer-mini.urgent{background:#dc2626}
 @keyframes timerMiniIn{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
-.timer-box{background:#fff;border-radius:32px 32px 0 0;padding:20px 28px calc(40px + env(safe-area-inset-bottom));text-align:center;width:100%;max-width:430px;box-shadow:0 -8px 40px rgba(0,0,0,0.15)}
+.timer-box{background:#fff;border-radius:32px 32px 0 0;padding:20px 28px calc(40px + env(safe-area-inset-bottom));text-align:center;width:100%;max-width:var(--sheet-max);box-shadow:0 -8px 40px rgba(0,0,0,0.15)}
 .timer-svg-wrap{position:relative;width:220px;height:220px;margin:0 auto 4px}
 .timer-svg-wrap svg{width:220px;height:220px;transform:rotate(-90deg)}
 .timer-svg-track{fill:none;stroke:#f0f0ec;stroke-width:10}
@@ -309,20 +309,20 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .week-day-select{flex:1;padding:6px 10px;border:1px solid var(--border2);border-radius:8px;font-size:12px;background:var(--bg2);color:var(--text);font-family:var(--font);-webkit-appearance:none;appearance:none;font-weight:500}
 
 /* ── EVOLUCIÓN PANEL ── */
-.evol-panel{position:fixed;inset:0;background:#f5f5f3;z-index:600;display:flex;flex-direction:column;transform:translateY(100%);transition:transform 0.35s cubic-bezier(.32,.72,0,1);max-width:430px;margin:0 auto}
+.evol-panel{position:fixed;inset:0;background:#f5f5f3;z-index:600;display:flex;flex-direction:column;transform:translateY(100%);transition:transform 0.35s cubic-bezier(.32,.72,0,1);max-width:var(--app-max);margin:0 auto}
 .evol-panel.open{transform:translateY(0)}
 .evol-header{flex-shrink:0;background:#fff;border-bottom:1.5px solid #eaeae6;padding:14px 20px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;align-items:center;gap:12px}
 .evol-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 
 /* ── DETAIL PANELS ── */
-.detail-panel{position:fixed;inset:0;background:#f5f5f3;z-index:500;display:flex;flex-direction:column;transform:translateY(100%);transition:transform 0.3s cubic-bezier(.32,.72,0,1);max-width:430px;margin:0 auto}
+.detail-panel{position:fixed;inset:0;background:#f5f5f3;z-index:500;display:flex;flex-direction:column;transform:translateY(100%);transition:transform 0.3s cubic-bezier(.32,.72,0,1);max-width:var(--app-max);margin:0 auto}
 .detail-panel.open{transform:translateY(0)}
 .detail-panel-header{flex-shrink:0;background:#fff;border-bottom:1.5px solid #eaeae6;padding:14px 20px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;align-items:center;gap:12px}
 .detail-panel-back{width:36px;height:36px;border-radius:10px;background:#f5f5f3;border:1.5px solid #eaeae6;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .detail-panel-title{font-family:'DM Serif Display',serif;font-size:20px;color:#111;letter-spacing:-.3px}
 .detail-panel-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 /* ── EDITAR SEMANA (reorganizar plan, drag&drop) — colores muestreados del mockup ── */
-.es-overlay{position:fixed;top:0;left:0;right:0;bottom:0;max-width:430px;margin:0 auto;background:#fdf9f8;z-index:600;display:none;flex-direction:column;transform:translateY(14px);opacity:0;transition:transform .26s cubic-bezier(.32,.72,0,1),opacity .2s ease}
+.es-overlay{position:fixed;top:0;left:0;right:0;bottom:0;max-width:var(--app-max);margin:0 auto;background:#fdf9f8;z-index:600;display:none;flex-direction:column;transform:translateY(14px);opacity:0;transition:transform .26s cubic-bezier(.32,.72,0,1),opacity .2s ease}
 .es-overlay.open{transform:translateY(0);opacity:1}
 .es-header{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));border-bottom:1px solid #efe9e7;background:#fdf9f8}
 .es-back{width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:-6px}
@@ -348,7 +348,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .es-save:active{transform:scale(.985);background:#015c26}
 .es-cancel{text-align:center;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;color:#5b5c57;margin-top:16px;cursor:pointer;padding:6px}
 /* ── REGISTRO DE MÉTRICAS (Pasos/Peso/Sueño/Calorías) — sistema "Premium Athletic" ── */
-.reg-screen{position:fixed;inset:0;z-index:700;background:#fcf9f8;display:flex;flex-direction:column;max-width:430px;margin:0 auto;overflow:hidden;transform:translateX(100%);transition:transform .28s cubic-bezier(.32,.72,0,1)}
+.reg-screen{position:fixed;inset:0;z-index:700;background:#fcf9f8;display:flex;flex-direction:column;max-width:var(--app-max);margin:0 auto;overflow:hidden;transform:translateX(100%);transition:transform .28s cubic-bezier(.32,.72,0,1)}
 .reg-screen.open{transform:translateX(0)}
 .reg-hdr{flex-shrink:0;display:flex;align-items:center;gap:12px;height:60px;padding:0 18px;padding-top:env(safe-area-inset-top);background:#fcf9f8;box-shadow:0 1px 0 rgba(28,27,27,.06)}
 .reg-back{width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:-8px;background:none;border:none;padding:0}
@@ -361,7 +361,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .reg-save:active{transform:scale(.985)}
 .reg-ruler{display:flex;align-items:flex-end;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;cursor:grab;height:64px;touch-action:none;-webkit-user-select:none;user-select:none}
 .reg-ruler.reg-ruler-drag{cursor:grabbing;scroll-behavior:auto}
-.actpop-card{width:100%;max-width:480px;background:#fcf9f8;border-radius:24px 24px 0 0;padding:16px 18px calc(16px + env(safe-area-inset-bottom));max-height:82vh;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.18);animation:actpopUp .26s cubic-bezier(.32,.72,0,1)}
+.actpop-card{width:100%;max-width:480px;background:#fcf9f8;border-radius:24px 24px 0 0;padding:16px 18px calc(16px + env(safe-area-inset-bottom));max-height:82dvh;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.18);animation:actpopUp .26s cubic-bezier(.32,.72,0,1)}
 @keyframes actpopUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .actpop-list{overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:2px 4px;flex:1;min-height:80px}
 .actpop-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1.5px solid #f0f0ee;background:#fff;margin-bottom:10px;cursor:pointer;transition:border-color .12s,background .12s}
@@ -377,8 +377,8 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .reg-spin{animation:regspin .8s linear infinite;display:inline-flex}
 
 /* ── NOTIFICATIONS PANEL ── */
-#notif-panel{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:600;max-width:430px;margin:0 auto}
-.notif-inner{position:absolute;inset:0;width:100%;max-width:430px;margin:0 auto;background:#f4f3f0;border:none;border-radius:0;box-shadow:none;overflow:hidden;max-height:none;display:flex;flex-direction:column}
+#notif-panel{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:600;max-width:var(--app-max);margin:0 auto}
+.notif-inner{position:absolute;inset:0;width:100%;max-width:var(--app-max);margin:0 auto;background:#f4f3f0;border:none;border-radius:0;box-shadow:none;overflow:hidden;max-height:none;display:flex;flex-direction:column}
 .notif-item{padding:12px 16px;border-bottom:1.5px solid #eaeae6;cursor:pointer;transition:background .12s;display:flex;gap:10px;align-items:flex-start}
 .notif-item:last-child{border-bottom:none}
 .notif-item:active{background:#f5f5f3}
@@ -459,6 +459,35 @@ button, [onclick]:not(input):not(textarea):not(select){
   .export-btn:active, .perfil-action-btn:active, .period-btn:active,
   .set-save-btn:active, .timer-btn:active, button:active{ transform: none; }
 }
+
+/* ── Pantalla adaptable (iPhone Duo plegado/desplegado, vertical/horizontal) ──
+   La app ocupa todo el ancho de la pantalla abierta. Las hojas que suben desde
+   abajo se quedan con un ancho cómodo en pantallas anchas. */
+:root{--app-max:100%;--sheet-max:100%;--dock-w:76px;--dock-col:calc(var(--dock-w) + 20px + env(safe-area-inset-right))}
+@media (min-width:600px){:root{--sheet-max:560px}}
+@media (min-width:1100px){:root{--app-max:1024px}}
+.app{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+/* Pantalla desplegada (vertical u horizontal): las pestañas pasan a un dock
+   flotante a la derecha, estilo Apple, y el contenido ocupa toda la altura. */
+@media (min-width:600px){
+  .app[style*="flex"]{display:grid !important}
+  .app{grid-template-columns:minmax(0,1fr) var(--dock-col);grid-template-rows:auto minmax(0,1fr);padding-right:0}
+  .app>.header{grid-column:1;grid-row:1}
+  .app>.content{grid-column:1;grid-row:2}
+  /* Cada pestaña es una burbuja suelta; la barra en sí no tiene fondo. */
+  .app>.tab-bar{grid-column:2;grid-row:1/3;align-self:center;justify-self:start;width:var(--dock-w);flex-direction:column;align-items:center;gap:14px;padding:0;border:none;background:none}
+  .app>.tab-bar .tab-item{flex:0 0 auto;width:58px;height:58px;padding:0;justify-content:center;gap:0;border-radius:50%;background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);border:1px solid rgba(0,0,0,.05);box-shadow:0 8px 22px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06);transition:background .15s,box-shadow .15s,transform .15s}
+  .app>.tab-bar .tab-item.active{background:#16a34a;box-shadow:0 8px 22px rgba(22,163,74,.35)}
+  .app>.tab-bar .tab-item.active .tab-icon-wrap svg{stroke:#fff}
+  .app>.tab-bar .tab-item>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .app>.tab-bar .tab-dot{display:none}
+  .timer-mini{right:calc(var(--dock-col) + 4px)}
+  #export-home-fab{right:calc(var(--dock-col) + 8px) !important}
+}
+@media (min-width:600px) and (orientation:landscape){
+  .timer-mini{bottom:calc(18px + env(safe-area-inset-bottom))}
+  #export-home-fab{bottom:calc(24px + env(safe-area-inset-bottom)) !important}
+}
 </style>
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style id="auth-redesign">
@@ -506,7 +535,7 @@ button, [onclick]:not(input):not(textarea):not(select){
 <body>
 <!-- AUTH SCREEN -->
 <!-- WELCOME SCREEN -->
-<div id="screen-welcome" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:430px;margin:0 auto;overflow:hidden;-webkit-overflow-scrolling:touch">
+<div id="screen-welcome" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:var(--app-max);margin:0 auto;overflow:hidden;-webkit-overflow-scrolling:touch">
   <div style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0;padding:38px 26px 6px">
     <!-- Top bar -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -541,7 +570,7 @@ button, [onclick]:not(input):not(textarea):not(select){
   </div>
 </div>
 
-<div id="screen-auth" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:430px;margin:0 auto;overflow-y:auto;-webkit-overflow-scrolling:touch">
+<div id="screen-auth" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:var(--app-max);margin:0 auto;overflow-y:auto;-webkit-overflow-scrolling:touch">
   <!-- Header bar -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:54px 22px 6px;flex-shrink:0">
     <div onclick="authBack()" style="width:42px;height:42px;border-radius:50%;background:#ecebe6;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="10" height="17" viewBox="0 0 10 17" fill="none" stroke="#1a1a18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1L1 8.5L9 16"/></svg></div>
@@ -597,7 +626,7 @@ button, [onclick]:not(input):not(textarea):not(select){
   </div>
 </div>
 
-<div id="screen-reset" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:430px;margin:0 auto;overflow-y:auto">
+<div id="screen-reset" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:var(--app-max);margin:0 auto;overflow-y:auto">
   <div style="padding:68px 28px 0;flex-shrink:0">
     <div style="font-family:'DM Serif Display',serif;font-size:36px;line-height:1.05;color:#111;letter-spacing:-.5px;margin-bottom:8px">Nueva<br>contraseña.</div>
     <div style="font-size:14px;color:#999;line-height:1.5;margin-bottom:28px">Elige una contraseña nueva para tu cuenta de MyTracc.</div>
@@ -626,12 +655,12 @@ button, [onclick]:not(input):not(textarea):not(select){
 </div>
 
 <!-- ONBOARDING SCREEN -->
-<div id="screen-onboarding" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:430px;margin:0 auto;overflow-y:auto">
+<div id="screen-onboarding" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:var(--app-max);margin:0 auto;overflow-y:auto">
   <div id="ob-content" style="min-height:100%"></div>
 </div>
 
 <!-- PENDING SCREEN -->
-<div id="screen-pending" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:430px;margin:0 auto;overflow-y:auto;-webkit-overflow-scrolling:touch">
+<div id="screen-pending" style="display:none;position:fixed;inset:0;background:#f5f5f3;z-index:9000;flex-direction:column;max-width:var(--app-max);margin:0 auto;overflow-y:auto;-webkit-overflow-scrolling:touch">
   <div style="flex:1;display:flex;flex-direction:column;padding:54px 26px 12px">
     <div style="position:relative;flex:0 0 auto;width:100%;aspect-ratio:5/4;max-height:300px;border-radius:24px;overflow:hidden;background:linear-gradient(155deg,#2c322f 0%,#1a1e1c 52%,#0d100f 100%);box-shadow:0 18px 40px rgba(0,0,0,.18)">
       <div style="position:absolute;inset:0;background:radial-gradient(120% 70% at 50% 30%,rgba(74,222,128,.18),transparent 60%)"></div>
@@ -664,7 +693,7 @@ button, [onclick]:not(input):not(textarea):not(select){
 </div>
 
 <!-- LOADING SCREEN -->
-<div id="screen-loading" style="display:flex;position:fixed;inset:0;background:#f5f5f3;z-index:9000;align-items:center;justify-content:center;max-width:430px;margin:0 auto">
+<div id="screen-loading" style="display:flex;position:fixed;inset:0;background:#f5f5f3;z-index:9000;align-items:center;justify-content:center;max-width:var(--app-max);margin:0 auto">
   <div id="loading-spinner" style="width:32px;height:32px;border:3px solid #e0e0dc;border-top-color:#16a34a;border-radius:50%;animation:spin .7s linear infinite"></div>
   <div id="loading-error" style="display:none;flex-direction:column;align-items:center;text-align:center;padding:0 32px;max-width:340px">
     <div id="loading-error-icon" style="font-size:38px;margin-bottom:12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px"><path d="M5 12a9 9 0 0 1 9-9M5 16a5 5 0 0 1 5-5M6 20h.01M2 12a13 13 0 0 1 13-13"/></svg></div>
@@ -2042,7 +2071,25 @@ function switchTab(tab){
 
   }
   render();
+  updateWakeLock();
 }
+
+// Pantalla siempre encendida mientras se está en Entreno (para no tener que
+// desbloquear el móvil entre series). El sistema la suelta al salir de la app,
+// así que se vuelve a pedir al volver.
+let _wakeLock=null;
+async function updateWakeLock(){
+  const want=state.tab==='train'&&document.visibilityState==='visible';
+  try{
+    if(want&&!_wakeLock&&navigator.wakeLock){
+      _wakeLock=await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener('release',()=>{_wakeLock=null;});
+    }else if(!want&&_wakeLock){
+      const wl=_wakeLock;_wakeLock=null;await wl.release();
+    }
+  }catch(e){_wakeLock=null;}
+}
+document.addEventListener('visibilitychange',updateWakeLock);
 
 function copyLastSession(exO){
   // Usa la MISMA fuente que el placeholder "ant." (ex.p), que se calcula
@@ -2108,6 +2155,10 @@ function render(){
     else if(state.tab==='diet')c.innerHTML=renderDiet();
     else if(state.tab==='progress'){c.innerHTML=renderProgreso();hydrateRevisionPhotos();markRevisionsSeen();}
   }
+  // El fondo de la app sigue al de la pestaña, para que la columna del dock
+  // (pantalla desplegada) no se vea de otro color.
+  const _tabBg=c.firstElementChild?getComputedStyle(c.firstElementChild).backgroundColor:'';
+  document.getElementById('main-app').style.background=(_tabBg&&_tabBg!=='rgba(0, 0, 0, 0)')?_tabBg:'';
   // Si el historial está abierto como overlay (desde Inicio), mantenerlo sincronizado
   var _hs=document.getElementById('hist-screen');
   if(_hs){ var _k=_hs.scrollTop; _hs.innerHTML=renderHistorial(); try{hydrateRevisionPhotos();markRevisionsSeen();}catch(e){} _hs.scrollTop=_k; }
@@ -3385,7 +3436,7 @@ function showStreakLostAlert(prevDays){
   if(document.getElementById('streak-lost-alert'))return;
   const el=document.createElement('div');
   el.id='streak-lost-alert';
-  el.style.cssText='position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translateX(-50%) translateY(-20px);z-index:1200;width:calc(100% - 32px);max-width:398px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none';
+  el.style.cssText='position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translateX(-50%) translateY(-20px);z-index:1200;width:calc(100% - 32px);max-width:calc(var(--sheet-max) - 32px);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none';
   el.innerHTML=
     '<div style="background:#fff;border:1.5px solid rgba(239,68,68,.25);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:0 8px 30px rgba(0,0,0,.16)">'+
       '<div style="width:40px;height:40px;border-radius:12px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#ef4444">'+
@@ -3938,7 +3989,7 @@ function renderWeightEvolution(){
 
 function renderWeightEvolutionInto(){
   const s=document.getElementById('we-screen'); if(!s)return;
-  s.innerHTML='<div style="max-width:430px;margin:0 auto;min-height:100%;background:#fbfaf9;">'+renderWeightEvolution()+'</div>';
+  s.innerHTML='<div style="max-width:var(--app-max);margin:0 auto;min-height:100%;background:#fbfaf9;">'+renderWeightEvolution()+'</div>';
 }
 function openWeightEvolution(){
   if(!state.weRange)state.weRange='1w';
@@ -4914,7 +4965,7 @@ function renderCheatForm(){
   miniCal+='</div></div></div>';
 
   return '<div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;flex-direction:column;justify-content:flex-end;" onclick="toggleCheatForm()">'+
-    '<div style="background:#fff;border-radius:28px 28px 0 0;padding:0 0 calc(40px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;scrollbar-width:none;" onclick="event.stopPropagation()">'+
+    '<div style="background:#fff;border-radius:28px 28px 0 0;padding:0 0 calc(40px + env(safe-area-inset-bottom));max-height:92dvh;overflow-y:auto;scrollbar-width:none;" onclick="event.stopPropagation()">'+
       '<div style="display:flex;justify-content:center;padding:12px 0 4px;"><div style="width:36px;height:4px;border-radius:2px;background:#e0e0dc;"></div></div>'+
       '<div style="padding:8px 22px 0;">'+
         // Título
@@ -5749,7 +5800,7 @@ function openCheatDayModal(fecha){
   overlayEl.onclick=e=>{if(e.target===overlayEl)closeSheet();};
 
   const sheetEl=document.createElement('div');
-  sheetEl.style.cssText='background:var(--bg2);border-radius:24px 24px 0 0;width:100%;max-width:430px;max-height:80vh;overflow-y:auto;-webkit-overflow-scrolling:touch;will-change:transform';
+  sheetEl.style.cssText='background:var(--bg2);border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);max-height:80dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;will-change:transform';
   sheetEl.onclick=e=>e.stopPropagation();
 
   function closeSheet(){
@@ -5848,7 +5899,7 @@ function deleteCheat(id){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:700;display:flex;align-items:flex-end;justify-content:center';
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
   const sheet=document.createElement('div');
-  sheet.style.cssText='background:#fff;border-radius:28px 28px 0 0;width:100%;max-width:430px;padding:0 0 48px';
+  sheet.style.cssText='background:#fff;border-radius:28px 28px 0 0;width:100%;max-width:var(--sheet-max);padding:0 0 48px';
   sheet.onclick=e=>e.stopPropagation();
   sheet.innerHTML=
     '<div style="display:flex;justify-content:center;padding:12px 0 8px"><div style="width:36px;height:4px;border-radius:2px;background:#e0e0dc"></div></div>'+
@@ -6815,7 +6866,7 @@ function openVideoModal(exName, videoUrl){
   overlay.onclick=e=>{if(e.target===overlay)closeVideo();};
 
   const sheet=document.createElement('div');
-  sheet.style.cssText='background:#111;border-radius:24px 24px 0 0;width:100%;max-width:430px;height:88vh;display:flex;flex-direction:column;overflow:hidden';
+  sheet.style.cssText='background:#111;border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);height:88dvh;display:flex;flex-direction:column;overflow:hidden';
   sheet.onclick=e=>e.stopPropagation();
 
   const ytBtn='<a href="'+watchUrl+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#ff0000;color:#fff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 12px;border-radius:999px;font-family:var(--font);">'+
@@ -7722,7 +7773,7 @@ function openExportConfirm(exportFn){
   overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
 
   const sheet=document.createElement('div');
-  sheet.style.cssText='background:#fff;border-radius:28px 28px 0 0;width:100%;max-width:430px;padding:0 0 48px;';
+  sheet.style.cssText='background:#fff;border-radius:28px 28px 0 0;width:100%;max-width:var(--sheet-max);padding:0 0 48px;';
   sheet.onclick=e=>e.stopPropagation();
   sheet.innerHTML=
     '<div style="display:flex;justify-content:center;padding:12px 0 8px"><div style="width:36px;height:4px;border-radius:2px;background:#e0e0dc"></div></div>'+
@@ -9157,7 +9208,7 @@ function abrirContraproponer(id){
   const horaVal=d?String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'):'';
   let ov=document.getElementById('cp-overlay');
   if(!ov){ov=document.createElement('div');ov.id='cp-overlay';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:850;display:flex;align-items:flex-end;justify-content:center';ov.onclick=(e)=>{if(e.target===ov)cerrarContraproponer();};document.body.appendChild(ov);}
-  ov.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:18px 18px calc(28px + env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
+  ov.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);padding:18px 18px calc(28px + env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
       '<div style="font-family:\'DM Serif Display\',serif;font-size:19px;color:#111">Proponer otra hora</div>'+
       '<button onclick="cerrarContraproponer()" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #eaeae6;background:#fff;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
@@ -9200,7 +9251,7 @@ function abrirProponerCita(){
     return '<button onclick="_setPropTipo(\''+k+'\')" style="font-size:12px;font-weight:600;padding:8px 13px;border-radius:9px;border:1.5px solid '+(on?'#111':'#eaeae6')+';background:'+(on?'#111':'#f5f5f3')+';color:'+(on?'#fff':'#666')+';cursor:pointer;font-family:\'DM Sans\',sans-serif">'+T.label+'</button>';
   }).join('');
   const inp='width:100%;height:46px;border:1.5px solid #eaeae6;border-radius:12px;padding:0 13px;font-size:14px;color:#111;box-sizing:border-box;font-family:\'DM Sans\',sans-serif;outline:none;background:#fff';
-  ov.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:18px 18px calc(24px + env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
+  ov.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);padding:18px 18px calc(24px + env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
       '<div style="font-family:\'DM Serif Display\',serif;font-size:19px;color:#111">Proponer cita</div>'+
       '<button onclick="cerrarProponerCita()" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #eaeae6;background:#fff;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
@@ -9349,7 +9400,7 @@ function _renderNotaForm(texto, dateStr){
     return '<button onclick="_setNotaTag(\''+k+'\')" style="font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;border:1.5px solid '+(on?'#111':'#eaeae6')+';background:'+(on?'#111':'#f5f5f3')+';color:'+(on?'#fff':'#666')+';cursor:pointer;font-family:\'DM Sans\',sans-serif">'+T.emoji+' '+T.label+'</button>';
   }).join('');
   const optStyle=(on)=>'flex:1;border:1.5px solid '+(on?'#111':'#eaeae6')+';background:'+(on?'#f5f5f3':'#fff')+';border-radius:12px;padding:12px;cursor:pointer';
-  ov.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:18px 18px calc(24px + env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
+  ov.innerHTML='<div style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);padding:18px 18px calc(24px + env(safe-area-inset-bottom))" onclick="event.stopPropagation()">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
       '<div style="font-family:\'DM Serif Display\',serif;font-size:18px;color:#111">'+(_notaEditId?'Editar nota':'Nueva nota')+' · '+_dayFmtTitulo(dateStr)+'</div>'+
       '<button onclick="cerrarNotaForm()" style="width:30px;height:30px;border-radius:8px;border:1.5px solid #eaeae6;background:#fff;color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
@@ -9442,7 +9493,7 @@ function openEditProfile(){
   ov.id='edit-profile-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:flex-end;justify-content:center;';
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
-  ov.innerHTML='<div onclick="event.stopPropagation()" style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;">'+
+  ov.innerHTML='<div onclick="event.stopPropagation()" style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;">'+
     '<div style="width:36px;height:4px;background:#e6e6e0;border-radius:2px;margin:0 auto 16px;"></div>'+
     '<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:800;color:#111;margin-bottom:18px;">Editar perfil</div>'+
     '<label style="display:block;font-size:13px;font-weight:600;color:#6b6b66;margin-bottom:6px;">Altura (cm)</label>'+
@@ -9486,7 +9537,7 @@ function openNotifSettings(){
     : perm==='denied'||perm==='unsupported'
       ? '<div style="font-size:12.5px;color:#999;background:#f5f5f3;border-radius:12px;padding:12px;line-height:1.5;">Actívalas desde los ajustes del navegador para este sitio.</div>'
       : '<button onclick="enableBrowserNotifs()" style="width:100%;height:52px;border-radius:14px;background:#16a34a;border:none;color:#fff;font-family:\'DM Sans\',sans-serif;font-size:15px;font-weight:700;cursor:pointer;">Activar notificaciones</button>';
-  ov.innerHTML='<div onclick="event.stopPropagation()" style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;">'+
+  ov.innerHTML='<div onclick="event.stopPropagation()" style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;">'+
     '<div style="width:36px;height:4px;background:#e6e6e0;border-radius:2px;margin:0 auto 16px;"></div>'+
     '<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:800;color:#111;margin-bottom:6px;">Notificaciones</div>'+
     '<div style="font-size:13.5px;color:#8a8a83;line-height:1.5;margin-bottom:18px;">Recibe avisos de citas y mensajes de tu entrenador en este dispositivo. Estado: <b style="color:#111;">'+stTxt+'</b>.</div>'+
@@ -9507,7 +9558,7 @@ function openPrivacyInfo(){
   const ov=document.createElement('div');ov.id='priv-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:flex-end;justify-content:center;';
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
-  ov.innerHTML='<div onclick="event.stopPropagation()" style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:430px;padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;max-height:80vh;overflow-y:auto;">'+
+  ov.innerHTML='<div onclick="event.stopPropagation()" style="background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:var(--sheet-max);padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;max-height:80dvh;overflow-y:auto;">'+
     '<div style="width:36px;height:4px;background:#e6e6e0;border-radius:2px;margin:0 auto 16px;"></div>'+
     '<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:800;color:#111;margin-bottom:14px;">Privacidad</div>'+
     '<div style="font-size:14px;color:#3e4a3d;line-height:1.6;">'+
@@ -9827,7 +9878,7 @@ async function loadClientPlan(clientId){
 // ── REGISTRO SERVICE WORKER ──
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/MyTracc/sw.js')
+    navigator.serviceWorker.register('./sw.js')
       .then(reg=>console.log('SW registrado:',reg.scope))
       .catch(err=>console.warn('SW no registrado:',err));
   });
