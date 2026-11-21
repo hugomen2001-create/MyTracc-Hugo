@@ -1189,6 +1189,9 @@ let scheduledTrainingPlan=null;
 // (qué día de FIXED_DIET_PLAN se muestra en cada slot lunes..domingo).
 let dietWeekReorders={};
 let activeMeso=null;
+// Primer día del mesociclo activo. El historial, la evolución y el "anterior"
+// de cada ejercicio solo cuentan sesiones desde aquí: cada mesociclo empieza de cero.
+function mesoStartStr(){return (activeMeso&&activeMeso.start_date)?String(activeMeso.start_date).slice(0,10):'1900-01-01';}
 let splitAdjustments=[]; // histórico de desplazamientos del split (split_adjustments)
 let weekReorders={}; // week_key -> plan[] (reorganización semanal desde week_reorders en Supabase)
 let metricsCache={}; // date -> daily_metrics row
@@ -5210,6 +5213,7 @@ async function openExHistory(exName,session,exOrder){
     .select('id,session_date,workout_sets(*)')
     .eq('client_id',clientData.id)
     .eq('session_type',session)
+    .gte('session_date',mesoStartStr())
     .order('session_date',{ascending:true});
 
   const liveRows=[];
@@ -6189,6 +6193,7 @@ async function openEvolucion(session){
     .select('id,session_date,session_type,workout_sets(*)')
     .eq('client_id',clientData.id)
     .eq('session_type',session)
+    .gte('session_date',mesoStartStr())
     .order('session_date',{ascending:true});
 
   if(error||!sessions){
@@ -9837,6 +9842,7 @@ async function loadClientPlan(clientId){
     const {data:hist}=await sb.from('workout_sessions')
       .select('session_date,session_type,workout_sets(exercise_name,set_number,reps_done,weight_kg)')
       .eq('client_id',clientId)
+      .gte('session_date',mesoStartStr())
       .order('session_date',{ascending:false});
     if(hist&&hist.length){
       const lastByType={};
