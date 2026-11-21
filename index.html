@@ -1242,10 +1242,12 @@ function rebuildGymData(){
       exGroups[ws.exercise_name].push(ws);
     });
     // Mapear a order index buscando el nombre en MESO2 (todas las sesiones)
-    const allExercises=Object.values(MESO2).flat();
+    // Se busca SOLO en la sesión de ese día: un mismo ejercicio puede estar en
+    // varias sesiones con distinto orden (p. ej. Elevaciones laterales en Y es el
+    // 7 en PUSH y el 5 en PUSH 2) y buscarlo en todas lo colocaba en otro hueco.
+    const ownExercises=MESO2[sess.session_type]||Object.values(MESO2).flat();
     Object.keys(exGroups).forEach(name=>{
-      // Buscar el ejercicio por nombre en el plan
-      const planEx=allExercises.find(e=>e.n===name);
+      const planEx=ownExercises.find(e=>e.n===name);
       const exO=planEx?planEx.o:null;
       if(!exO)return; // ejercicio no encontrado en el plan, ignorar
       gymData[wk][di].sets[exO]=gymData[wk][di].sets[exO]||[];

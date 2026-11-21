@@ -2,7 +2,7 @@
 // Red primero: con conexión siempre se carga la última versión publicada; la
 // copia guardada solo se usa sin conexión. Las peticiones a otros dominios
 // (Supabase, fuentes, CDN) no pasan por aquí.
-const CACHE_NAME = 'mytracc-v5';
+const CACHE_NAME = 'mytracc-v6';
 const ASSETS = [
   './',
   './index.html',
